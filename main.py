@@ -28,6 +28,9 @@ if not os.path.isfile(automation_client_dll_path):
 
 clr.AddReference(automation_client_dll_path)
 
+
+clr.AddReference(r"C:\Program Files\McLaren Applied Technologies\ATLAS 10\MAT.SqlRace.Ssn2Splitter.dll")
+
 from System.Collections.Generic import *
 from System.Collections.ObjectModel import *
 from System import *
@@ -36,13 +39,15 @@ from MAT.OCS.Core import *
 from MESL.SqlRace.Domain import *
 from MESL.SqlRace.Enumerators import *
 from MESL.SqlRace.Domain.Infrastructure.DataPipeline import *
+from MAT.SqlRace.Ssn2Splitter import Ssn2SessionExporter
 
 #  Initialise SQLRace
 Core.LicenceProgramName = "SQLRace"
 Core.Initialize()
 
 #  Create new session
-connectionString = r"DbEngine=SQLite;Data Source=c:\ssn2\test01.ssndb;"
+pathToSession = r"c:\ssn2\test01.ssndb"
+connectionString = rf"DbEngine=SQLite;Data Source={pathToSession};"
 sessionManager = SessionManager.CreateSessionManager()
 sessionKey = SessionKey.NewKey()
 sessionIdentifier = 'TestSession'
@@ -54,7 +59,7 @@ clientSession = sessionManager.CreateSession(connectionString, sessionKey, sessi
 session = clientSession.Session
 
 #  Add 5 lap
-for i in range(1,6):
+for i in range(1, 6):
     newlap = Lap(int(sessionDate.TimeOfDay.TotalMilliseconds * 1e6 + 60e9 * (i)), i, Byte(0), f"Lap{i}", True)
     session.Laps.InsertItem(0, newlap)
 
@@ -120,9 +125,10 @@ config.AddParameter(myParameter)
 config.Commit()
 
 # Add some random data
-samplecount = int((session.EndTime-session.StartTime)/FrequencyExtensions.ToInterval(myParamFrequency))
-# data = np.random.randint(0, 2, samplecount).astype(int).tolist()
-data = np.sin(np.linspace(0,100,samplecount))
+samplecount = int((session.EndTime - session.StartTime) / FrequencyExtensions.ToInterval(myParamFrequency))
+# data = np.random.randint(0, 2, samplecount)
+data = np.random.rand(samplecount)
+# data = np.sin(np.linspace(0,100,samplecount))
 netarray = Array[Double](data.astype(float).tolist())
 for i, datum in enumerate(data):
     session.AddChannelData(MyParamChannelId,
@@ -131,3 +137,6 @@ for i, datum in enumerate(data):
                            BitConverter.GetBytes(netarray[i]))
 
 clientSession.Close()
+
+exporter = Ssn2SessionExporter()
+exporter.Export(sessionKey.ToString(), pathToSession, 'C:/ssn2/')
