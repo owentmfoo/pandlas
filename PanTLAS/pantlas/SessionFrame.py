@@ -84,7 +84,6 @@ class SessionFrame(pd.DataFrame):
         applicationGroup1.SupportsRda = False
         config.AddGroup(applicationGroup1)
 
-
         ParameterGroupIdentifier = self.ParameterGroupIdentifier
         ApplicationGroupName = self.ApplicationGroupName
 
@@ -134,14 +133,18 @@ class SessionFrame(pd.DataFrame):
         # data = np.sin(np.linspace(0,100,samplecount))
         netarray = Array[Double](data.astype(float).tolist())
 
-        # pd.date_range()
+        timestamps = pd.date_range(DateTime.Today.AddMilliseconds(session.StartTime / 1e6).ToString(),
+                                   DateTime.Today.AddMilliseconds(session.EndTime / 1e6 + 600e3).ToString(),
+                                   samplecount)
 
-        for i, datum in enumerate(data):
-            timestamp = int(sessionDate.TimeOfDay.TotalMilliseconds * 1e6 + FrequencyExtensions.ToInterval(
-                                       myParamFrequency) * i)
+        for timestamp, datapoint in zip(timestamps, data.astype(float).tolist()):
+            # timestamp = int(sessionDate.TimeOfDay.TotalMilliseconds * 1e6 + FrequencyExtensions.ToInterval(
+            # myParamFrequency) * i)
+            timestamp = ((timestamp.hour * 3600 + timestamp.minute * 60 + timestamp.second) * 1e9 + timestamp.microsecond * 1e3 +
+                         timestamp.nanosecond)
             channelIds = List[UInt32]()
             channelIds.Add(MyParamChannelId)
-            session.AddRowData(Int64(int(timestamp)), channelIds, BitConverter.GetBytes(netarray[i]))
+            session.AddRowData(Int64(int(timestamp)), channelIds, BitConverter.GetBytes(datapoint))
 
         logging.info('Data added.')
         print(session.get_CurrentConfigurationSets().get_Count())
