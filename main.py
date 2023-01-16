@@ -59,9 +59,9 @@ clientSession = sessionManager.CreateSession(connectionString, sessionKey, sessi
 session = clientSession.Session
 
 #  Add 5 lap
-for i in range(1, 6):
-    newlap = Lap(int(sessionDate.TimeOfDay.TotalMilliseconds * 1e6 + 60e9 * (i)), i, Byte(0), f"Lap{i}", True)
-    session.Laps.InsertItem(0, newlap)
+for i in range(5):
+    newlap = Lap(int(sessionDate.TimeOfDay.TotalMilliseconds * 1e6 + 60e9 * (i)), i, Byte(0), f"Lap{i+1}", True)
+    session.Laps.Add(newlap)
 
 #  Create parameter groups
 ParameterName = "MyParam"
