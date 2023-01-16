@@ -100,7 +100,7 @@ class SessionFrame(pd.DataFrame):
             "MyParamChannel",
             FrequencyExtensions.ToInterval(myParamFrequency),
             DataType.FloatingPoint32Bit,
-            ChannelDataSourceType.Periodic)
+            ChannelDataSourceType.RowData)
         config.AddChannel(myParameterChannel)
 
         #  Add param
@@ -137,10 +137,11 @@ class SessionFrame(pd.DataFrame):
         # pd.date_range()
 
         for i, datum in enumerate(data):
-            session.AddChannelData(MyParamChannelId,
-                                   int(sessionDate.TimeOfDay.TotalMilliseconds * 1e6 + FrequencyExtensions.ToInterval(
-                                       myParamFrequency) * i), 1,
-                                   BitConverter.GetBytes(netarray[i]))
+            timestamp = int(sessionDate.TimeOfDay.TotalMilliseconds * 1e6 + FrequencyExtensions.ToInterval(
+                                       myParamFrequency) * i)
+            channelIds = List[UInt32]()
+            channelIds.Add(MyParamChannelId)
+            session.AddRowData(Int64(int(timestamp)), channelIds, BitConverter.GetBytes(netarray[i]))
 
         logging.info('Data added.')
         print(session.get_CurrentConfigurationSets().get_Count())
