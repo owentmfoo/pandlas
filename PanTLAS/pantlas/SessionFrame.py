@@ -58,6 +58,7 @@ class SessionFrame(pd.DataFrame):
         super().__init__(*args, **kwargs)
         self.ParameterGroupIdentifier = "SessionFrame"
         self.ApplicationGroupName = "MyApp"
+        self.paramchannelID = dict() # TODO: fix warning
         # TODO: check if index is datatime index or timedelta index
         # TODO: check if a dataframe is passed in or not
 
@@ -92,22 +93,38 @@ class SessionFrame(pd.DataFrame):
         config.AddConversion(RationalConversion.CreateSimple1To1Conversion(ConversionFunctionName, "", "%5.2f"))
 
         # obtain the data
-        i = 0
-        timestamps = self.index
-        data = self.iloc[:, i].to_numpy()
-        paramName = self.columns[i]
+        for paramName in self.columns:
+            timestamps = self.index
+            data = self.loc[:, paramName].to_numpy()
+            dispmax = data.max()
+            dispmin = data.min()
+            warnmax = dispmax
+            warnmin = dispmin
 
-        # Add param channel
-        MyParamChannelId = 999998
-        myParameterChannel = Channel(
-            MyParamChannelId,
-            "MyParamChannel",
-            0,
-            DataType.FloatingPoint32Bit,
-            ChannelDataSourceType.RowData)
-        config.AddChannel(myParameterChannel)
+            # Add param channel
+            MyParamChannelId = session.ReserveNextAvailableRowChannelId() % 2147483647
+            # TODO: this is a stupid workaround because it takes UInt32 but it cast it to Int32 internally...
+            self.add_channel(config, MyParamChannelId, paramName)
 
-        #  Add param
+            #  Add param
+            self.add_param(config, ApplicationGroupName, ConversionFunctionName, MyParamChannelId,
+                           ParameterGroupIdentifier, dispmax, dispmin, paramName, warnmax, warnmin)
+
+        config.Commit()
+
+        # write it to the session
+        for paramName in self.columns:
+            timestamps = self.index
+            data = self.loc[:, paramName].to_numpy()
+            MyParamChannelId = self.paramchannelID[paramName]
+            self.add_data(session, MyParamChannelId, data, timestamps)
+
+        logging.info('Data added.')
+        print(session.get_CurrentConfigurationSets().get_Count())
+
+    def add_param(self, config, ApplicationGroupName, ConversionFunctionName, MyParamChannelId,
+                  ParameterGroupIdentifier, dispmax, dispmin, paramName, warnmax, warnmin):
+        # TODO: docstring and typehints
         ParameterName = paramName
         parameterIdentifier = f"{ParameterName}:{ApplicationGroupName}"
         parameterGroupIdentifiers = List[String]()
@@ -116,33 +133,40 @@ class SessionFrame(pd.DataFrame):
             parameterIdentifier,
             ParameterName,
             ParameterName + "Description",
-            1.0,
-            -1.0,
-            1.0,
-            -1.0,
+            float(dispmax),
+            float(dispmin),
+            float(warnmax),
+            float(warnmin),
             0.0,
             0xFFFF,
             0,
             ConversionFunctionName,
             parameterGroupIdentifiers,
-            myParameterChannel.Id,
+            MyParamChannelId,
             ApplicationGroupName)
         config.AddParameter(myParameter)
 
-        config.Commit()
+    def add_channel(self, config, channel_id, paramName):
+        # TODO: docstring and typehints
+        self.paramchannelID[paramName] = channel_id
+        myParameterChannel = Channel(
+            channel_id,
+            "MyParamChannel",
+            0,
+            DataType.FloatingPoint32Bit,
+            ChannelDataSourceType.RowData)
+        config.AddChannel(myParameterChannel)
+        return myParameterChannel
 
-        # write it to the session
+    def add_data(self, session, MyParamChannelId, data, timestamps):
+        """add data to a channel"""
+        # TODO: docstring and typehints
         for timestamp, datapoint in zip(timestamps, data.astype(float).tolist()):
-            # timestamp = int(sessionDate.TimeOfDay.TotalMilliseconds * 1e6 + FrequencyExtensions.ToInterval(
-            # myParamFrequency) * i)
-            timestamp = ((timestamp.hour * 3600 + timestamp.minute * 60 + timestamp.second) * 1e9 + timestamp.microsecond * 1e3 +
-                         timestamp.nanosecond)
+            timestamp = ((timestamp.hour * 3600 + timestamp.minute * 60 + timestamp.second) * 1e9 +
+                         timestamp.microsecond * 1e3 + timestamp.nanosecond)
             channelIds = List[UInt32]()
             channelIds.Add(MyParamChannelId)
             session.AddRowData(Int64(int(timestamp)), channelIds, BitConverter.GetBytes(datapoint))
-
-        logging.info('Data added.')
-        print(session.get_CurrentConfigurationSets().get_Count())
 
 
 if __name__ == '__main__':
@@ -174,16 +198,15 @@ if __name__ == '__main__':
 
     # Add some random data
     samplecount = int((session.EndTime - session.StartTime) / 1e9) * 10  # 10Hz sample rate
-    # data = np.random.randint(0, 2, samplecount)
-    # data = np.random.rand(samplecount)
-    data = np.sin(np.linspace(0, 100, samplecount))
-
     timestamps = pd.date_range(DateTime.Today.AddMilliseconds(session.StartTime / 1e6).ToString(),
                                DateTime.Today.AddMilliseconds(session.EndTime / 1e6).ToString(),
                                samplecount)
 
-    df = pd.DataFrame(index=timestamps, data=data, columns=['sine'])
+    df = pd.DataFrame(index=timestamps)
     sf = SessionFrame(df)
+    sf.loc[:, 'Sine'] = np.sin(np.linspace(0, 100, samplecount))
+    sf.loc[:, 'Random'] = np.random.rand(samplecount)
+    sf.loc[:, 'Random int'] = np.random.randint(0, 2, samplecount)
     sf.to_ssn2(session)
 
     clientSession.Close()
