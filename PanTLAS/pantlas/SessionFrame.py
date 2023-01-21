@@ -91,19 +91,24 @@ class SessionFrame(pd.DataFrame):
         ConversionFunctionName = "Simple1To1"
         config.AddConversion(RationalConversion.CreateSimple1To1Conversion(ConversionFunctionName, "", "%5.2f"))
 
+        # obtain the data
+        i = 0
+        timestamps = self.index
+        data = self.iloc[:, i].to_numpy()
+        paramName = self.columns[i]
+
         # Add param channel
         MyParamChannelId = 999998
-        myParamFrequency = Frequency(2, FrequencyUnit.Hz)
         myParameterChannel = Channel(
             MyParamChannelId,
             "MyParamChannel",
-            FrequencyExtensions.ToInterval(myParamFrequency),
+            0,
             DataType.FloatingPoint32Bit,
             ChannelDataSourceType.RowData)
         config.AddChannel(myParameterChannel)
 
         #  Add param
-        ParameterName = "MyParam"
+        ParameterName = paramName
         parameterIdentifier = f"{ParameterName}:{ApplicationGroupName}"
         parameterGroupIdentifiers = List[String]()
         parameterGroupIdentifiers.Add(ParameterGroupIdentifier)
@@ -126,17 +131,7 @@ class SessionFrame(pd.DataFrame):
 
         config.Commit()
 
-        # Add some random data
-        samplecount = int((session.EndTime - session.StartTime) / FrequencyExtensions.ToInterval(myParamFrequency))
-        # data = np.random.randint(0, 2, samplecount)
-        data = np.random.rand(samplecount)
-        # data = np.sin(np.linspace(0,100,samplecount))
-        netarray = Array[Double](data.astype(float).tolist())
-
-        timestamps = pd.date_range(DateTime.Today.AddMilliseconds(session.StartTime / 1e6).ToString(),
-                                   DateTime.Today.AddMilliseconds(session.EndTime / 1e6 + 600e3).ToString(),
-                                   samplecount)
-
+        # write it to the session
         for timestamp, datapoint in zip(timestamps, data.astype(float).tolist()):
             # timestamp = int(sessionDate.TimeOfDay.TotalMilliseconds * 1e6 + FrequencyExtensions.ToInterval(
             # myParamFrequency) * i)
@@ -151,13 +146,9 @@ class SessionFrame(pd.DataFrame):
 
 
 if __name__ == '__main__':
+    from PanTLAS.pantlas.SqlRace import initialise_sqlrace
 
-    #  Initialise SQLRace
-    logging.info('Initialising SQLRace API')
-    if not Core.IsInitialized:
-        Core.LicenceProgramName = "SQLRace"
-        Core.Initialize()
-    logging.info('SQLRace API Initialised')
+    initialise_sqlrace()
 
     litedbdir = r'c:\temp\PanTLAS\temp.ssndb'
     pathToFile = r'c:\ssn2\test1.ssn2'
@@ -181,7 +172,18 @@ if __name__ == '__main__':
                      True)
         session.Laps.Add(newlap)
 
-    sf = SessionFrame(pd.DataFrame(np.random.random([5, 2])))
+    # Add some random data
+    samplecount = int((session.EndTime - session.StartTime) / 1e9) * 10  # 10Hz sample rate
+    # data = np.random.randint(0, 2, samplecount)
+    # data = np.random.rand(samplecount)
+    data = np.sin(np.linspace(0, 100, samplecount))
+
+    timestamps = pd.date_range(DateTime.Today.AddMilliseconds(session.StartTime / 1e6).ToString(),
+                               DateTime.Today.AddMilliseconds(session.EndTime / 1e6).ToString(),
+                               samplecount)
+
+    df = pd.DataFrame(index=timestamps, data=data, columns=['sine'])
+    sf = SessionFrame(df)
     sf.to_ssn2(session)
 
     clientSession.Close()
