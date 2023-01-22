@@ -1,6 +1,7 @@
 """As a subclass for dataframe"""
 import datetime
 import os
+import warnings
 from typing import Union, List
 
 import numpy as np
@@ -58,12 +59,23 @@ class SessionFrame(pd.DataFrame):
         super().__init__(*args, **kwargs)
         self.ParameterGroupIdentifier = "SessionFrame"
         self.ApplicationGroupName = "MyApp"
-        self.paramchannelID = dict() # TODO: fix warning
+        self.paramchannelID = dict()  # TODO: fix warning
+        if not isinstance(self.index, pd.DatetimeIndex):
+            warnings.warn("DataFrame index is not pd.DatetimeIndex, attempting to parse index to DatetimeIndex...")
+            try:
+                self.index = pd.to_datetime(self.index)
+                warnings.warn("parse success.")
+            except:
+                warnings.warn("parse failed.")
         # TODO: check if index is datatime index or timedelta index
         # TODO: check if a dataframe is passed in or not
 
     def to_ssn2(self, session):
         """Add the contents of the frame to the ATLAS session."""
+
+        if not isinstance(self.index, pd.DatetimeIndex):
+            raise TypeError("SessionFrame index is not pd.DatetimeIndex, unable to export to ssn2")
+
         config = session.CreateConfiguration()
 
         # Add param group
@@ -110,7 +122,7 @@ class SessionFrame(pd.DataFrame):
             self.add_param(config, ApplicationGroupName, ConversionFunctionName, MyParamChannelId,
                            ParameterGroupIdentifier, dispmax, dispmin, paramName, warnmax, warnmin)
 
-        config.Commit()
+        config.Commit()  # TODO: is it possible to commit multiple config or amend configs?
 
         # write it to the session
         for paramName in self.columns:
@@ -190,23 +202,30 @@ if __name__ == '__main__':
                                                  sessionDate, eventType)
     session = clientSession.Session
     logging.info('Session created')
-    #  Add 1 lap
-    for i in range(4):
-        newlap = Lap(int(sessionDate.TimeOfDay.TotalMilliseconds * 1e6 + 60e9 * (i)), i, Byte(0), f"Lap{i + 1}",
-                     True)
-        session.Laps.Add(newlap)
+
+    # #  Add 1 lap
+    # for i in range(4):
+    #     newlap = Lap(int(sessionDate.TimeOfDay.TotalMilliseconds * 1e6 + 60e9 * (i)), i, Byte(0), f"Lap{i + 1}",
+    #                  True)
+    #     session.Laps.Add(newlap)
 
     # Add some random data
-    samplecount = int((session.EndTime - session.StartTime) / 1e9) * 10  # 10Hz sample rate
-    timestamps = pd.date_range(DateTime.Today.AddMilliseconds(session.StartTime / 1e6).ToString(),
-                               DateTime.Today.AddMilliseconds(session.EndTime / 1e6).ToString(),
-                               samplecount)
+    # samplecount = int((session.EndTime - session.StartTime) / 1e9) * 10  # 10Hz sample rate
+    # timestamps = pd.date_range(DateTime.Today.AddMilliseconds(session.StartTime / 1e6).ToString(),
+    #                            DateTime.Today.AddMilliseconds(session.EndTime / 1e6).ToString(),
+    #                            samplecount)
+    #
+    # df = pd.DataFrame(index=timestamps)
+    # sf = SessionFrame(df)
+    # sf.loc[:, 'Sine'] = np.sin(np.linspace(0, 100, samplecount))
+    # sf.loc[:, 'Random'] = np.random.rand(samplecount)
+    # sf.loc[:, 'Random int'] = np.random.randint(0, 2, samplecount)
 
-    df = pd.DataFrame(index=timestamps)
-    sf = SessionFrame(df)
-    sf.loc[:, 'Sine'] = np.sin(np.linspace(0, 100, samplecount))
-    sf.loc[:, 'Random'] = np.random.rand(samplecount)
-    sf.loc[:, 'Random int'] = np.random.randint(0, 2, samplecount)
+    df = pd.read_csv(
+        "https://data.nationalgrideso.com/backend/dataset/88313ae5-94e4-4ddc-a790-593554d8c6b9/resource/f93d1835-75bc-43e5-84ad-12472b180a98/download/df_fuel_ckan.csv")
+    df.set_index('DATETIME', inplace=True)
+    sf = SessionFrame(df.loc["2023-01-21":"2023-01-22"])
+    sf.index = pd.to_datetime(sf.index)
     sf.to_ssn2(session)
 
     clientSession.Close()
