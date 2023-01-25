@@ -6,7 +6,9 @@ authors = ["Owen Foo <owen.foo@mclaren.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = ">=3.9,<3.12"
+pythonnet = "3.0.1"
+pandas = "^1.5.3"
 
 
 [build-system]

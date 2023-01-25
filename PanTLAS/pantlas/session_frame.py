@@ -1,4 +1,16 @@
-"""As a subclass for dataframe"""
+"""Class file of SessionFrame
+
+SessionFrame is a subclass of pandas DataFrame, and it have additional methods to interact with the ATLAS APIs
+through pythonnet.
+
+ATLAS APIs are build on the .NET Framework (and will be moved to .NET Core in the near future).
+
+See Also:
+    SQLRace API Documenetation: https://mat-docs.github.io/Atlas.SQLRaceAPI.Documentation/api/index.html
+    Automation API Documentation: https://mat-docs.github.io/Atlas.DisplayAPI.Documentation/articles/automation.html
+    API Examples Github: https://github.com/mat-docs
+
+    """
 import datetime
 import os
 import warnings
@@ -9,7 +21,6 @@ import pandas as pd
 import clr
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
 
 # The path to the main SQL Race DLL. This is the default location when installed with Atlas 10
 sql_race_dll_path = r"C:\Program Files\McLaren Applied Technologies\ATLAS 10\MESL.SqlRace.Domain.dll"
@@ -70,8 +81,16 @@ class SessionFrame(pd.DataFrame):
         # TODO: check if index is datatime index or timedelta index
         # TODO: check if a dataframe is passed in or not
 
-    def to_ssn2(self, session):
-        """Add the contents of the frame to the ATLAS session."""
+    def to_ssn2(self, session: Session):
+        """Add the contents of the DataFrame to the ATLAS session.
+
+        The index of the DataFrame must be a DatetimeIndex, or else a TypeError will be raised.
+        All the data should be float or can be converted to float.
+        A row channel will be created for each column and the parameter will be named using the column name.
+
+        Args:
+            session: MESL.SqlRace.Domain.Session
+        """
 
         if not isinstance(self.index, pd.DatetimeIndex):
             raise TypeError("SessionFrame index is not pd.DatetimeIndex, unable to export to ssn2")
@@ -116,11 +135,11 @@ class SessionFrame(pd.DataFrame):
             # Add param channel
             MyParamChannelId = session.ReserveNextAvailableRowChannelId() % 2147483647
             # TODO: this is a stupid workaround because it takes UInt32 but it cast it to Int32 internally...
-            self.add_channel(config, MyParamChannelId, paramName)
+            self._add_channel(config, MyParamChannelId, paramName)
 
             #  Add param
-            self.add_param(config, ApplicationGroupName, ConversionFunctionName, MyParamChannelId,
-                           ParameterGroupIdentifier, dispmax, dispmin, paramName, warnmax, warnmin)
+            self._add_param(config, ApplicationGroupName, ConversionFunctionName,
+                            ParameterGroupIdentifier, dispmax, dispmin, paramName, warnmax, warnmin)
 
         config.Commit()  # TODO: is it possible to commit multiple config or amend configs?
 
@@ -134,10 +153,25 @@ class SessionFrame(pd.DataFrame):
         logging.info('Data added.')
         print(session.get_CurrentConfigurationSets().get_Count())
 
-    def add_param(self, config, ApplicationGroupName, ConversionFunctionName, MyParamChannelId,
-                  ParameterGroupIdentifier, dispmax, dispmin, paramName, warnmax, warnmin):
-        # TODO: docstring and typehints
+    def _add_param(self, config: ConfigurationSet, ApplicationGroupName: str, ConversionFunctionName: str,
+                   ParameterGroupIdentifier: int, dispmax: float, dispmin: float, paramName: str, warnmax: float,
+                   warnmin: float):
+        """ Adds a parameter to the ConfigurationSet.
+
+        Args:
+            config: ConfigurationSet to add to.
+            ApplicationGroupName: Name of the ApplicationGroup to be under
+            ConversionFunctionName: Name of the conversion factor to apply.
+            ParameterGroupIdentifier: ID of the ParameterGroup.
+            dispmax: Display maximum.
+            dispmin: Display minimum.
+            paramName: Parameter name.
+            warnmax: Warning maximum.
+            warnmin: Warning minimum.
+
+        """
         ParameterName = paramName
+        MyParamChannelId = self.paramchannelID[paramName]
         parameterIdentifier = f"{ParameterName}:{ApplicationGroupName}"
         parameterGroupIdentifiers = List[String]()
         parameterGroupIdentifiers.Add(ParameterGroupIdentifier)
@@ -158,7 +192,14 @@ class SessionFrame(pd.DataFrame):
             ApplicationGroupName)
         config.AddParameter(myParameter)
 
-    def add_channel(self, config, channel_id, paramName):
+    def _add_channel(self, config: ConfigurationSet, channel_id: int, paramName: str):
+        """Adds a row channel to the config.
+
+        Args:
+            config: ConfigurationSet to add to.
+            channel_id: ID of the channel.
+            paramName: Name of the parameter.
+        """
         # TODO: docstring and typehints
         self.paramchannelID[paramName] = channel_id
         myParameterChannel = Channel(
@@ -168,20 +209,29 @@ class SessionFrame(pd.DataFrame):
             DataType.FloatingPoint32Bit,
             ChannelDataSourceType.RowData)
         config.AddChannel(myParameterChannel)
-        return myParameterChannel
 
-    def add_data(self, session, MyParamChannelId, data, timestamps):
-        """add data to a channel"""
-        # TODO: docstring and typehints
+    def add_data(self, session: Session, channel_id: float,
+                 data: np.ndarray, timestamps: np.ndarray):
+        """Adds data to a channel.
+
+        Args:
+            session: Session to add data to.
+            channel_id: ID of the channel.
+            data: numpy array of float or float equivalents
+            timestamps: numpy array of datatime64
+        """
+        # TODO: add in guard against invalid datatypes
         for timestamp, datapoint in zip(timestamps, data.astype(float).tolist()):
             timestamp = ((timestamp.hour * 3600 + timestamp.minute * 60 + timestamp.second) * 1e9 +
                          timestamp.microsecond * 1e3 + timestamp.nanosecond)
             channelIds = List[UInt32]()
-            channelIds.Add(MyParamChannelId)
+            channelIds.Add(channel_id)
             session.AddRowData(Int64(int(timestamp)), channelIds, BitConverter.GetBytes(datapoint))
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
+
     from PanTLAS.pantlas.SqlRace import initialise_sqlrace
 
     initialise_sqlrace()
