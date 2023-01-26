@@ -4,11 +4,15 @@ version = "0.1.0"
 description = ""
 authors = ["Owen Foo <owen.foo@mclaren.com>"]
 readme = "README.md"
+classifiers = [
+    "Private :: Do Not Upload",
+]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
 pythonnet = "3.0.1"
 pandas = "^1.5.3"
+tqdm = "^4.64.1"
 
 
 [build-system]
