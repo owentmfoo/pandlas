@@ -241,43 +241,71 @@ if __name__ == '__main__':
     pathToFile = os.path.abspath(pathToFile)
     output_dir = os.path.dirname(pathToFile)
 
-    #  Create new session
-    connectionString = rf"DbEngine=SQLite;Data Source={litedbdir};"
-    sessionManager = SessionManager.CreateSessionManager()
-    sessionKey = SessionKey.NewKey()
-    sessionIdentifier = os.path.basename(pathToFile).strip(".ssn2")
-    sessionDate = DateTime.Now
-    eventType = 'SessionFrame'
-    clientSession = sessionManager.CreateSession(connectionString, sessionKey, sessionIdentifier,
-                                                 sessionDate, eventType)
-    session = clientSession.Session
-    logging.info('Session created')
+    create_new_session = False
+    load_existing = True
 
-    # #  Add 1 lap
-    # for i in range(4):
-    #     newlap = Lap(int(sessionDate.TimeOfDay.TotalMilliseconds * 1e6 + 60e9 * (i)), i, Byte(0), f"Lap{i + 1}",
-    #                  True)
-    #     session.Laps.Add(newlap)
 
-    # Add some random data
-    # samplecount = int((session.EndTime - session.StartTime) / 1e9) * 10  # 10Hz sample rate
-    # timestamps = pd.date_range(DateTime.Today.AddMilliseconds(session.StartTime / 1e6).ToString(),
-    #                            DateTime.Today.AddMilliseconds(session.EndTime / 1e6).ToString(),
-    #                            samplecount)
-    #
-    # df = pd.DataFrame(index=timestamps)
-    # sf = SessionFrame(df)
-    # sf.loc[:, 'Sine'] = np.sin(np.linspace(0, 100, samplecount))
-    # sf.loc[:, 'Random'] = np.random.rand(samplecount)
-    # sf.loc[:, 'Random int'] = np.random.randint(0, 2, samplecount)
+    if create_new_session:
+        #  Create new session`
+        connectionString = rf"DbEngine=SQLite;Data Source={litedbdir};"
+        sessionManager = SessionManager.CreateSessionManager()
+        sessionKey = SessionKey.NewKey()
+        sessionIdentifier = os.path.basename(pathToFile).strip(".ssn2")
+        sessionDate = DateTime.Now
+        eventType = 'SessionFrame'
+        clientSession = sessionManager.CreateSession(connectionString, sessionKey, sessionIdentifier,
+                                                     sessionDate, eventType)
+        session = clientSession.Session
+        logging.info('Session created')
 
-    df = pd.read_csv(
-        "https://data.nationalgrideso.com/backend/dataset/88313ae5-94e4-4ddc-a790-593554d8c6b9/resource/f93d1835-75bc-43e5-84ad-12472b180a98/download/df_fuel_ckan.csv")
-    df.set_index('DATETIME', inplace=True)
-    sf = SessionFrame(df.loc["2023-01-21":"2023-01-22"])
-    sf.index = pd.to_datetime(sf.index)
-    sf.to_ssn2(session)
+        # #  Add 1 lap
+        # for i in range(4):
+        #     newlap = Lap(int(sessionDate.TimeOfDay.TotalMilliseconds * 1e6 + 60e9 * (i)), i, Byte(0), f"Lap{i + 1}",
+        #                  True)
+        #     session.Laps.Add(newlap)
 
-    clientSession.Close()
-    exporter = Ssn2SessionExporter()
-    exporter.Export(sessionKey.ToString(), litedbdir, output_dir)
+        # Add some random data
+        # samplecount = int((session.EndTime - session.StartTime) / 1e9) * 10  # 10Hz sample rate
+        # timestamps = pd.date_range(DateTime.Today.AddMilliseconds(session.StartTime / 1e6).ToString(),
+        #                            DateTime.Today.AddMilliseconds(session.EndTime / 1e6).ToString(),
+        #                            samplecount)
+        #
+        # df = pd.DataFrame(index=timestamps)
+        # sf = SessionFrame(df)
+        # sf.loc[:, 'Sine'] = np.sin(np.linspace(0, 100, samplecount))
+        # sf.loc[:, 'Random'] = np.random.rand(samplecount)
+        # sf.loc[:, 'Random int'] = np.random.randint(0, 2, samplecount)
+
+        df = pd.read_csv(
+            "https://data.nationalgrideso.com/backend/dataset/88313ae5-94e4-4ddc-a790-593554d8c6b9/resource/f93d1835-75bc-43e5-84ad-12472b180a98/download/df_fuel_ckan.csv")
+        df.set_index('DATETIME', inplace=True)
+        sf = SessionFrame(df.loc["2023-01-21":"2023-01-22"])
+        sf.index = pd.to_datetime(sf.index)
+        sf.to_ssn2(session)
+
+        clientSession.Close()
+        # exporter = Ssn2SessionExporter()
+        # exporter.Export(sess`ionKey.ToString(), litedbdir, output_dir)
+
+
+    if load_existing:
+        keys = ["21a0153a-a414-41bc-9ca8-c4f39921d4f0"]
+        connection_string = r"DBEngine=SQLite;Data Source=D:\SSN2\Energy.ssn2"
+        connection_strings = [connection_string]
+    elif create_new_session:  # load the newly created session if it was previously created
+        keys = [sessionKey.ToString()]
+        connectionStrings = [connectionString]
+    # Building connection strings list for LoadingSQLRaceSession
+
+    from MAT.Atlas.Automation.Client.Services import ApplicationServiceClient, WorkbookServiceClient, SetServiceClient
+    from automation import open_atlas, load_session
+
+    app = ApplicationServiceClient()
+    open_atlas(app)
+
+    workbookServiceClient = WorkbookServiceClient()
+    setsList = workbookServiceClient.GetSets()
+
+    workbookServiceClient.LoadWorkbook(r"D:\2023R1 Demo\Energy.wbkx")
+    load_session(app, setsList[0].Id, keys, connection_strings)
+
