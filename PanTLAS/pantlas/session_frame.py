@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 import clr
 import logging
+from tqdm import tqdm
 
 
 # The path to the main SQL Race DLL. This is the default location when installed with Atlas 10
@@ -124,7 +125,7 @@ class SessionFrame(pd.DataFrame):
         config.AddConversion(RationalConversion.CreateSimple1To1Conversion(ConversionFunctionName, "", "%5.2f"))
 
         # obtain the data
-        for paramName in self.columns:
+        for paramName in tqdm(self.columns, desc="Creating channels"):
             timestamps = self.index
             data = self.loc[:, paramName].to_numpy()
             dispmax = data.max()
@@ -144,7 +145,7 @@ class SessionFrame(pd.DataFrame):
         config.Commit()  # TODO: is it possible to commit multiple config or amend configs?
 
         # write it to the session
-        for paramName in self.columns:
+        for paramName in tqdm(self.columns, desc="Adding data"):
             timestamps = self.index
             data = self.loc[:, paramName].to_numpy()
             MyParamChannelId = self.paramchannelID[paramName]
