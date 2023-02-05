@@ -1,7 +1,7 @@
-"""Class file of SessionFrame
+"""Class file for SessionFrame
 
-SessionFrame is a subclass of pandas DataFrame, and it have additional methods to interact with the ATLAS APIs
-through pythonnet.
+SessionFrame is an extension of pandas DataFrame under the namespace 'atlas', and it has additional methods to interact
+with the ATLAS APIs through pythonnet.
 
 ATLAS APIs are build on the .NET Framework (and will be moved to .NET Core in the near future).
 
@@ -10,7 +10,7 @@ See Also:
     Automation API Documentation: https://mat-docs.github.io/Atlas.DisplayAPI.Documentation/articles/automation.html
     API Examples Github: https://github.com/mat-docs
 
-    """
+"""
 import datetime
 import os
 import warnings
@@ -65,22 +65,20 @@ from MESL.SqlRace.Enumerators import *
 from MESL.SqlRace.Domain.Infrastructure.DataPipeline import *
 from MAT.SqlRace.Ssn2Splitter import Ssn2SessionExporter
 
-
-class SessionFrame(pd.DataFrame):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+@pd.api.extensions.register_dataframe_accessor("atlas")
+class SessionFrame:
+    def __init__(self, pandas_obj):
+        self._obj = pandas_obj
         self.ParameterGroupIdentifier = "SessionFrame"
         self.ApplicationGroupName = "MyApp"
-        self.paramchannelID = dict()  # TODO: fix warning
-        if not isinstance(self.index, pd.DatetimeIndex):
+        self.paramchannelID = dict()
+        if not isinstance(self._obj.index, pd.DatetimeIndex):
             warnings.warn("DataFrame index is not pd.DatetimeIndex, attempting to parse index to DatetimeIndex...")
             try:
-                self.index = pd.to_datetime(self.index)
+                self._obj.index = pd.to_datetime(self._obj.index)
                 warnings.warn("parse success.")
             except:
                 warnings.warn("parse failed.")
-        # TODO: check if index is datatime index or timedelta index
-        # TODO: check if a dataframe is passed in or not
 
     def to_ssn2(self, session: Session):
         """Add the contents of the DataFrame to the ATLAS session.
@@ -93,13 +91,12 @@ class SessionFrame(pd.DataFrame):
             session: MESL.SqlRace.Domain.Session
         """
 
-        if not isinstance(self.index, pd.DatetimeIndex):
-            raise TypeError("SessionFrame index is not pd.DatetimeIndex, unable to export to ssn2")
+        if not isinstance(self._obj.index, pd.DatetimeIndex):
+            raise AttributeError("SessionFrame index is not pd.DatetimeIndex, unable to export to ssn2")
 
         config = session.CreateConfiguration()
 
         # Add param group
-        # TODO: check if it is present
         ParameterGroupIdentifier = self.ParameterGroupIdentifier
         group1 = ParameterGroup(ParameterGroupIdentifier, ParameterGroupIdentifier)
         config.AddParameterGroup(group1)
@@ -125,9 +122,9 @@ class SessionFrame(pd.DataFrame):
         config.AddConversion(RationalConversion.CreateSimple1To1Conversion(ConversionFunctionName, "", "%5.2f"))
 
         # obtain the data
-        for paramName in tqdm(self.columns, desc="Creating channels"):
-            timestamps = self.index
-            data = self.loc[:, paramName].to_numpy()
+        for paramName in tqdm(self._obj.columns, desc="Creating channels"):
+            timestamps = self._obj.index
+            data = self._obj.loc[:, paramName].to_numpy()
             dispmax = data.max()
             dispmin = data.min()
             warnmax = dispmax
@@ -142,12 +139,12 @@ class SessionFrame(pd.DataFrame):
             self._add_param(config, ApplicationGroupName, ConversionFunctionName,
                             ParameterGroupIdentifier, dispmax, dispmin, paramName, warnmax, warnmin)
 
-        config.Commit()  # TODO: is it possible to commit multiple config or amend configs?
+        config.Commit()
 
         # write it to the session
-        for paramName in tqdm(self.columns, desc="Adding data"):
-            timestamps = self.index
-            data = self.loc[:, paramName].to_numpy()
+        for paramName in tqdm(self._obj.columns, desc="Adding data"):
+            timestamps = self._obj.index
+            data = self._obj.loc[:, paramName].to_numpy()
             MyParamChannelId = self.paramchannelID[paramName]
             self.add_data(session, MyParamChannelId, data, timestamps)
 
@@ -201,7 +198,6 @@ class SessionFrame(pd.DataFrame):
             channel_id: ID of the channel.
             paramName: Name of the parameter.
         """
-        # TODO: docstring and typehints
         self.paramchannelID[paramName] = channel_id
         myParameterChannel = Channel(
             channel_id,
@@ -231,7 +227,7 @@ class SessionFrame(pd.DataFrame):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
 
     from PanTLAS.pantlas.SqlRace import initialise_sqlrace
 
@@ -242,7 +238,7 @@ if __name__ == '__main__':
     pathToFile = os.path.abspath(pathToFile)
     output_dir = os.path.dirname(pathToFile)
 
-    create_new_session = False
+    create_new_session = True
     load_existing = True
 
 
@@ -280,9 +276,10 @@ if __name__ == '__main__':
         df = pd.read_csv(
             "https://data.nationalgrideso.com/backend/dataset/88313ae5-94e4-4ddc-a790-593554d8c6b9/resource/f93d1835-75bc-43e5-84ad-12472b180a98/download/df_fuel_ckan.csv")
         df.set_index('DATETIME', inplace=True)
-        sf = SessionFrame(df.loc["2023-01-21":"2023-01-22"])
-        sf.index = pd.to_datetime(sf.index)
-        sf.to_ssn2(session)
+        df.index = pd.to_datetime(df.index)
+        # sf = SessionFrame(df.loc["2023-01-21":"2023-01-22"])
+        df = df.loc["2023-01-21":"2023-01-22"]
+        df.atlas.to_ssn2(session)
 
         clientSession.Close()
         # exporter = Ssn2SessionExporter()
@@ -305,8 +302,10 @@ if __name__ == '__main__':
     open_atlas(app)
 
     workbookServiceClient = WorkbookServiceClient()
-    setsList = workbookServiceClient.GetSets()
 
-    workbookServiceClient.LoadWorkbook(r"D:\2023R1 Demo\Energy.wbkx")
+    workbookServiceClient.ReplaceWorkbook(r"D:\2023R1 Demo\Energy.wbkx")
+    import time
+    time.sleep(5)
+    setsList = workbookServiceClient.GetSets()
     load_session(app, setsList[0].Id, keys, connection_strings)
 
