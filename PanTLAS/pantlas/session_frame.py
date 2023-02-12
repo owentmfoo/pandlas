@@ -21,7 +21,7 @@ import pandas as pd
 import clr
 import logging
 from tqdm import tqdm
-
+from pantlas.utils import timestamp2long
 
 # The path to the main SQL Race DLL. This is the default location when installed with Atlas 10
 sql_race_dll_path = r"C:\Program Files\McLaren Applied Technologies\ATLAS 10\MESL.SqlRace.Domain.dll"
@@ -93,6 +93,17 @@ class SessionFrame:
 
         if not isinstance(self._obj.index, pd.DatetimeIndex):
             raise AttributeError("SessionFrame index is not pd.DatetimeIndex, unable to export to ssn2")
+
+        # add a lap at the start of the session
+        timestamp = self._obj.index[0]
+        timestamp64 = timestamp2long(timestamp)
+        try:
+            lap = self._obj.loc[timestamp].Lap
+        except:
+            lap = 1
+        newlap = Lap(int(timestamp64), int(lap), Byte(0), f"Lap {lap}",
+                     True)
+        session.Laps.Add(newlap)
 
         config = session.CreateConfiguration()
 
@@ -168,6 +179,7 @@ class SessionFrame:
             warnmin: Warning minimum.
 
         """
+        # TODO: guard again NaNs
         ParameterName = paramName
         MyParamChannelId = self.paramchannelID[paramName]
         parameterIdentifier = f"{ParameterName}:{ApplicationGroupName}"
@@ -218,12 +230,15 @@ class SessionFrame:
             timestamps: numpy array of datatime64
         """
         # TODO: add in guard against invalid datatypes
-        for timestamp, datapoint in zip(timestamps, data.astype(float).tolist()):
-            timestamp = ((timestamp.hour * 3600 + timestamp.minute * 60 + timestamp.second) * 1e9 +
-                         timestamp.microsecond * 1e3 + timestamp.nanosecond)
-            channelIds = List[UInt32]()
-            channelIds.Add(channel_id)
+        timestamps = ((timestamps.hour * 3600 + timestamps.minute * 60 + timestamps.second) * 1e9 +
+                      timestamps.microsecond * 1e3 + timestamps.nanosecond)
+        channelIds = List[UInt32]()
+        channelIds.Add(channel_id)
+
+        def add_datapoint(timestamp, datapoint):
             session.AddRowData(Int64(int(timestamp)), channelIds, BitConverter.GetBytes(datapoint))
+
+        np.vectorize(add_datapoint)(timestamps, data.astype(float).tolist())
 
 
 if __name__ == '__main__':
@@ -239,8 +254,7 @@ if __name__ == '__main__':
     output_dir = os.path.dirname(pathToFile)
 
     create_new_session = True
-    load_existing = True
-
+    load_existing = False
 
     if create_new_session:
         #  Create new session`
@@ -285,7 +299,6 @@ if __name__ == '__main__':
         # exporter = Ssn2SessionExporter()
         # exporter.Export(sess`ionKey.ToString(), litedbdir, output_dir)
 
-
     if load_existing:
         keys = ["21a0153a-a414-41bc-9ca8-c4f39921d4f0"]
         connection_string = r"DBEngine=SQLite;Data Source=D:\SSN2\Energy.ssn2"
@@ -305,7 +318,7 @@ if __name__ == '__main__':
 
     workbookServiceClient.ReplaceWorkbook(r"D:\2023R1 Demo\Energy.wbkx")
     import time
+
     time.sleep(5)
     setsList = workbookServiceClient.GetSets()
     load_session(app, setsList[0].Id, keys, connection_strings)
-
