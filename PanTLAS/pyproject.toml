@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pantlas"
-version = "0.1.0"
+version = "0.1.1"
 description = ""
 authors = ["Owen Foo <owen.foo@mclaren.com>"]
 readme = "README.md"
