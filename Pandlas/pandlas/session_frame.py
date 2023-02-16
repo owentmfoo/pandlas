@@ -21,7 +21,7 @@ import pandas as pd
 import clr
 import logging
 from tqdm import tqdm
-from pantlas.utils import timestamp2long
+from pandlas.utils import timestamp2long
 
 # The path to the main SQL Race DLL. This is the default location when installed with Atlas 10
 sql_race_dll_path = r"C:\Program Files\McLaren Applied Technologies\ATLAS 10\MESL.SqlRace.Domain.dll"
@@ -244,11 +244,11 @@ class SessionFrame:
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
 
-    from PanTLAS.pantlas.SqlRace import initialise_sqlrace
+    from pandlas.SqlRace import initialise_sqlrace
 
     initialise_sqlrace()
 
-    litedbdir = r'c:\temp\PanTLAS\temp.ssndb'
+    litedbdir = r'c:\temp\pandlas\temp.ssndb'
     pathToFile = r'c:\ssn2\test1.ssn2'
     pathToFile = os.path.abspath(pathToFile)
     output_dir = os.path.dirname(pathToFile)

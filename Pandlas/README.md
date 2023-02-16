@@ -1,4 +1,4 @@
-#  PanTLAS
+#  Pandlas
 
 A Pandas extension for ATLAS.
 
@@ -16,7 +16,7 @@ Limitations
 - Session data must be within the same day 
 
 \
-Further possibilities with ALTAS API but not implemented in this python pcakage
+Further possibilities with ALTAS API but not implemented in this python package
 - Text Channels
 - Units for each parameter
 - Set custom limits and warnings in ATLAS
