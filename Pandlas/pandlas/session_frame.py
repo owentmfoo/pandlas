@@ -16,7 +16,7 @@ import os
 import random
 import warnings
 from typing import Union, List
-
+import numpy.typing as npt
 import numpy as np
 import pandas as pd
 import clr
@@ -82,7 +82,7 @@ class SessionFrame:
             except:
                 warnings.warn("parse failed.")
 
-    def to_ssn2(self, session: Session, show_progress_bar:bool = True):
+    def to_ssn2(self, session: Session, show_progress_bar: bool = True):
         """Add the contents of the DataFrame to the ATLAS session.
 
         The index of the DataFrame must be a DatetimeIndex, or else a TypeError will be raised.
@@ -111,7 +111,7 @@ class SessionFrame:
                      True)
         session.Laps.Add(newlap)
 
-        config_identifier = f"{random.randint(0,999999):05x}"
+        config_identifier = f"{random.randint(0, 999999):05x}"
         config_decription = "SessionFrame generated config"
         configSetManager = ConfigurationSetManager.CreateConfigurationSetManager()
         config = configSetManager.Create(session.ConnectionString, config_identifier, config_decription)
@@ -232,18 +232,21 @@ class SessionFrame:
         config.AddChannel(myParameterChannel)
 
     def add_data(self, session: Session, channel_id: float,
-                 data: np.ndarray, timestamps: np.ndarray):
+                 data: np.ndarray, timestamps: Union[pd.DatetimeIndex, npt.NDArray[np.datetime64]]):
         """Adds data to a channel.
 
         Args:
             session: Session to add data to.
             channel_id: ID of the channel.
             data: numpy array of float or float equivalents
-            timestamps: numpy array of datatime64
+            timestamps: timestamps for the datapoints
         """
         # TODO: add in guard against invalid datatypes
-        timestamps = ((timestamps.hour * 3600 + timestamps.minute * 60 + timestamps.second) * 1e9 +
-                      timestamps.microsecond * 1e3 + timestamps.nanosecond)
+        if not isinstance(timestamps, Union[pd.DatetimeIndex, npt.NDArray[np.datetime64]]):
+            raise TypeError("timestamps should be pd.DateTimeIndex, or numpy array of np.datetime64.")
+        timestamps = timestamp2long(timestamps)
+        # timestamps = ((timestamps.hour * 3600 + timestamps.minute * 60 + timestamps.second) * 1e9 +
+        #               timestamps.microsecond * 1e3 + timestamps.nanosecond)
         channelIds = List[UInt32]()
         channelIds.Add(channel_id)
 
