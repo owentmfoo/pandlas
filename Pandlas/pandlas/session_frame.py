@@ -13,6 +13,7 @@ See Also:
 """
 import datetime
 import os
+import random
 import warnings
 from typing import Union, List
 
@@ -65,6 +66,7 @@ from MESL.SqlRace.Enumerators import *
 from MESL.SqlRace.Domain.Infrastructure.DataPipeline import *
 from MAT.SqlRace.Ssn2Splitter import Ssn2SessionExporter
 
+
 @pd.api.extensions.register_dataframe_accessor("atlas")
 class SessionFrame:
     def __init__(self, pandas_obj):
@@ -80,7 +82,7 @@ class SessionFrame:
             except:
                 warnings.warn("parse failed.")
 
-    def to_ssn2(self, session: Session):
+    def to_ssn2(self, session: Session, show_progress_bar:bool = True):
         """Add the contents of the DataFrame to the ATLAS session.
 
         The index of the DataFrame must be a DatetimeIndex, or else a TypeError will be raised.
@@ -88,13 +90,17 @@ class SessionFrame:
         A row channel will be created for each column and the parameter will be named using the column name.
 
         Args:
-            session: MESL.SqlRace.Domain.Session
+            session: MESL.SqlRace.Domain.Session to the data to
+            show_progress_bar: Show progress bar when creating config and adding data.
+        Raises:
+             TypeError: The index is not a pd.DatetimeIndex.
         """
 
         if not isinstance(self._obj.index, pd.DatetimeIndex):
             raise AttributeError("SessionFrame index is not pd.DatetimeIndex, unable to export to ssn2")
 
-        # add a lap at the start of the session
+        # add a lap at the start of the session, if a column named Lap is present then it will add it
+        # TODO: add the rest of the laps
         timestamp = self._obj.index[0]
         timestamp64 = timestamp2long(timestamp)
         try:
@@ -105,7 +111,10 @@ class SessionFrame:
                      True)
         session.Laps.Add(newlap)
 
-        config = session.CreateConfiguration()
+        config_identifier = f"{random.randint(0,999999):05x}"
+        config_decription = "SessionFrame generated config"
+        configSetManager = ConfigurationSetManager.CreateConfigurationSetManager()
+        config = configSetManager.Create(session.ConnectionString, config_identifier, config_decription)
 
         # Add param group
         ParameterGroupIdentifier = self.ParameterGroupIdentifier
@@ -133,7 +142,7 @@ class SessionFrame:
         config.AddConversion(RationalConversion.CreateSimple1To1Conversion(ConversionFunctionName, "", "%5.2f"))
 
         # obtain the data
-        for paramName in tqdm(self._obj.columns, desc="Creating channels"):
+        for paramName in tqdm(self._obj.columns, desc="Creating channels", disable=not show_progress_bar):
             timestamps = self._obj.index
             data = self._obj.loc[:, paramName].to_numpy()
             dispmax = data.max()
@@ -150,17 +159,20 @@ class SessionFrame:
             self._add_param(config, ApplicationGroupName, ConversionFunctionName,
                             ParameterGroupIdentifier, dispmax, dispmin, paramName, warnmax, warnmin)
 
-        config.Commit()
+        try:
+            config.Commit()
+        except:
+            logging.warning(f"cannot commit config {config.Identifier}, config already exist.")
+        session.UseLoggingConfigurationSet(config.Identifier)
 
         # write it to the session
-        for paramName in tqdm(self._obj.columns, desc="Adding data"):
+        for paramName in tqdm(self._obj.columns, desc="Adding data", disable=not show_progress_bar):
             timestamps = self._obj.index
             data = self._obj.loc[:, paramName].to_numpy()
             MyParamChannelId = self.paramchannelID[paramName]
             self.add_data(session, MyParamChannelId, data, timestamps)
 
         logging.info('Data added.')
-        print(session.get_CurrentConfigurationSets().get_Count())
 
     def _add_param(self, config: ConfigurationSet, ApplicationGroupName: str, ConversionFunctionName: str,
                    ParameterGroupIdentifier: int, dispmax: float, dispmin: float, paramName: str, warnmax: float,
@@ -263,7 +275,7 @@ if __name__ == '__main__':
         sessionKey = SessionKey.NewKey()
         sessionIdentifier = os.path.basename(pathToFile).strip(".ssn2")
         sessionDate = DateTime.Now
-        eventType = 'SessionFrame'
+        eventType = 'Session'
         clientSession = sessionManager.CreateSession(connectionString, sessionKey, sessionIdentifier,
                                                      sessionDate, eventType)
         session = clientSession.Session
