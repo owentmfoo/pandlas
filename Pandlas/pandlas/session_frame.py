@@ -242,7 +242,7 @@ class SessionFrame:
             timestamps: timestamps for the datapoints
         """
         # TODO: add in guard against invalid datatypes
-        if not isinstance(timestamps, Union[pd.DatetimeIndex, npt.NDArray[np.datetime64]]):
+        if not isinstance(timestamps, (pd.DatetimeIndex, npt.NDArray[np.datetime64])):
             raise TypeError("timestamps should be pd.DateTimeIndex, or numpy array of np.datetime64.")
         timestamps = timestamp2long(timestamps)
         # timestamps = ((timestamps.hour * 3600 + timestamps.minute * 60 + timestamps.second) * 1e9 +
