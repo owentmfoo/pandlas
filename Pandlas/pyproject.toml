@@ -2,7 +2,7 @@
 name = "Pandlas"
 version = "0.1.2"
 description = ""
-authors = ["Owen Foo <owen.foo@mclaren.com>"]
+authors = ["Owen Foo <owen.foo@mclarenapplied.com>"]
 readme = "README.md"
 classifiers = [
     "Private :: Do Not Upload",
