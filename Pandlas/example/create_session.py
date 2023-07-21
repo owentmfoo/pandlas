@@ -2,19 +2,14 @@
 Example to create a session with multiple data rate and merging configs
 """
 
-from pandlas.SqlRace import sessionConnection
-# from pandlas import session_frame
-import os
+import logging
 import pandas as pd
 import numpy as np
-import logging
+from pandlas.SqlRace import sessionConnection
 
 logging.basicConfig(level=logging.INFO)
 
-litedbdir = r'c:\temp\pandlas\temp.ssndb'
-pathToFile = r'c:\ssn2\test1.ssn2'
-pathToFile = os.path.abspath(pathToFile)
-output_dir = os.path.dirname(pathToFile)
+SQLITE_DB_DIR = r'c:\temp\pandlas\temp.ssndb'
 
 start = np.datetime64("now")
 
@@ -24,7 +19,6 @@ start = np.datetime64("now")
 df = pd.DataFrame()
 df.index = pd.date_range(start, periods=1000, freq='S')
 df.loc[:, "Param 1"] = np.sin(np.linspace(0, 10 * np.pi, num=1000))
-
 
 # some optional extras
 #   - change the app group name
@@ -36,8 +30,7 @@ df2.loc[:, "Param 2"] = np.sin(np.linspace(0, 10 * np.pi, num=100))
 df2.atlas.ParameterGroupIdentifier = "Sub group 1"
 df2.atlas.ApplicationGroupName = "App Group2"
 
-
 session_identifier = "TestSession"
-with sessionConnection(litedbdir,session_identifier) as session:
-    df.atlas.to_ssn2(session)
-    df2.atlas.to_ssn2(session, show_progress_bar=False)
+with sessionConnection(SQLITE_DB_DIR, session_identifier) as session:
+    df.atlas.to_atlas_session(session)
+    df2.atlas.to_atlas_session(session, show_progress_bar=False)

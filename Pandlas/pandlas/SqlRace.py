@@ -64,7 +64,7 @@ class sessionConnection:
                                                           sessionDate, event_type)
         self.client = clientSession
         self.session = clientSession.Session
-        logging.info('Session created')
+        logging.info('SQLite session created')
 
     def __enter__(self):
         if self.db_engine == 'SQLite':
@@ -73,3 +73,4 @@ class sessionConnection:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.client.Close()
+        logging.info('Session closed.')

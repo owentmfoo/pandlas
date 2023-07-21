@@ -82,7 +82,7 @@ class SessionFrame:
             except:
                 warnings.warn("parse failed.")
 
-    def to_ssn2(self, session: Session, show_progress_bar: bool = True):
+    def to_atlas_session(self, session: Session, show_progress_bar: bool = True):
         """Add the contents of the DataFrame to the ATLAS session.
 
         The index of the DataFrame must be a DatetimeIndex, or else a TypeError will be raised.
@@ -109,7 +109,9 @@ class SessionFrame:
             lap = 1
         newlap = Lap(int(timestamp64), int(lap), Byte(0), f"Lap {lap}",
                      True)
-        session.Laps.Add(newlap)
+        # TODO: what to do when you add to an existing session.
+        if session.Laps.Count == 0:
+            session.Laps.Add(newlap)
 
         config_identifier = f"{random.randint(0, 999999):05x}"
         config_decription = "SessionFrame generated config"
@@ -172,10 +174,10 @@ class SessionFrame:
             MyParamChannelId = self.paramchannelID[paramName]
             self.add_data(session, MyParamChannelId, data, timestamps)
 
-        logging.info('Data added.')
+        logging.debug('Data for {}:{} added.'.format(self.ParameterGroupIdentifier, self.ApplicationGroupName))
 
     def _add_param(self, config: ConfigurationSet, ApplicationGroupName: str, ConversionFunctionName: str,
-                   ParameterGroupIdentifier: int, dispmax: float, dispmin: float, paramName: str, warnmax: float,
+                   ParameterGroupIdentifier: str, dispmax: float, dispmin: float, paramName: str, warnmax: float,
                    warnmin: float):
         """ Adds a parameter to the ConfigurationSet.
 
@@ -308,7 +310,7 @@ if __name__ == '__main__':
         df.index = pd.to_datetime(df.index)
         # sf = SessionFrame(df.loc["2023-01-21":"2023-01-22"])
         df = df.loc["2023-01-21":"2023-01-22"]
-        df.atlas.to_ssn2(session)
+        df.atlas.to_atlas_session(session)
 
         clientSession.Close()
         # exporter = Ssn2SessionExporter()
