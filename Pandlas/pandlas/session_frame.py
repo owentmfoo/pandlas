@@ -15,6 +15,7 @@ import datetime
 import os
 import random
 import warnings
+import struct
 from typing import Union, List
 import numpy.typing as npt
 import numpy as np
@@ -247,15 +248,22 @@ class SessionFrame:
         if not isinstance(timestamps, (pd.DatetimeIndex, npt.NDArray[np.datetime64])):
             raise TypeError("timestamps should be pd.DateTimeIndex, or numpy array of np.datetime64.")
         timestamps = timestamp2long(timestamps)
-        # timestamps = ((timestamps.hour * 3600 + timestamps.minute * 60 + timestamps.second) * 1e9 +
-        #               timestamps.microsecond * 1e3 + timestamps.nanosecond)
+
         channelIds = List[UInt32]()
         channelIds.Add(channel_id)
 
-        def add_datapoint(timestamp, datapoint):
-            session.AddRowData(Int64(int(timestamp)), channelIds, BitConverter.GetBytes(datapoint))
+        # databytes = data.astype(np.float32).tobytes()
+        databytes = bytearray(len(data)*4)
+        for i,value in enumerate(data):
+            new_bytes = struct.pack('f', value)
+            padding_length = 4 - len(new_bytes)
+            databytes[i*4:i*4+len(new_bytes)] = new_bytes
 
-        np.vectorize(add_datapoint)(timestamps, data.astype(float).tolist())
+        timestamps_array = Array[Int64](len(timestamps))
+        for i, timestamp in enumerate(timestamps):
+            timestamps_array[i] = Int64(int(timestamp))
+
+        session.AddRowData(channel_id, timestamps_array, databytes, 4, False)
 
 
 if __name__ == '__main__':
