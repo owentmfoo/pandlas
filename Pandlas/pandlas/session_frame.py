@@ -86,7 +86,7 @@ class SessionFrame:
     def to_atlas_session(self, session: Session, show_progress_bar: bool = True):
         """Add the contents of the DataFrame to the ATLAS session.
 
-        The index of the DataFrame must be a DatetimeIndex, or else a TypeError will be raised.
+        The index of the DataFrame must be a DatetimeIndex, or else a AttributeError will be raised.
         All the data should be float or can be converted to float.
         A row channel will be created for each column and the parameter will be named using the column name.
 
@@ -94,11 +94,11 @@ class SessionFrame:
             session: MESL.SqlRace.Domain.Session to the data to
             show_progress_bar: Show progress bar when creating config and adding data.
         Raises:
-             TypeError: The index is not a pd.DatetimeIndex.
+             AttributeError: The index is not a pd.DatetimeIndex.
         """
 
         if not isinstance(self._obj.index, pd.DatetimeIndex):
-            raise AttributeError("SessionFrame index is not pd.DatetimeIndex, unable to export to ssn2")
+            raise TypeError("SessionFrame index is not pd.DatetimeIndex, unable to export to ssn2")
 
         # add a lap at the start of the session, if a column named Lap is present then it will add it
         # TODO: add the rest of the laps
