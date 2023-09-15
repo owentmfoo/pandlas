@@ -1,11 +1,12 @@
 [tool.poetry]
 name = "Pandlas"
 version = "0.1.4"
-description = ""
+description = "An examaple package demonstrating how to use the SQLRace API. This package is not maintained nor officially supported."
 authors = ["Owen Foo <owen.foo@mclarenapplied.com>"]
 readme = "README.md"
 classifiers = [
     "Private :: Do Not Upload",
+    "Development Status :: 7 - Inactive",
 ]
 
 [tool.poetry.dependencies]
