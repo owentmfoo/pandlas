@@ -2,6 +2,7 @@
 import os
 import clr
 import logging
+import numpy as np
 
 # The path to the main SQL Race DLL. This is the default location when installed with Atlas 10
 sql_race_dll_path = r"C:\Program Files\McLaren Applied Technologies\ATLAS 10\MESL.SqlRace.Domain.dll"
@@ -30,7 +31,7 @@ if not os.path.isfile(automation_client_dll_path):
 clr.AddReference(automation_client_dll_path)
 
 from MAT.OCS.Core import SessionKey
-from MESL.SqlRace.Domain import Core, SessionManager
+from MESL.SqlRace.Domain import Core, SessionManager, FileSessionManager
 from System import DateTime
 
 
@@ -74,3 +75,19 @@ class sessionConnection:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.client.Close()
         logging.info('Session closed.')
+
+
+def get_samples(session, parameter: str):
+    """ Get all the samples for a parameter in the session
+
+    Args:
+        session: MESL.SqlRace.Domain.Session object.
+        parameter: The parameter identifier.
+
+    Returns:
+        tuple of numpy array of samples, timestamps
+    """
+    pda = session.CreateParameterDataAccess(parameter)
+    sample_count = pda.GetSamplesCount(session.StartTime, session.EndTime)
+    ParameterValues = pda.GetSamplesBetween(session.StartTime, session.EndTime, sample_count)
+    return np.array(ParameterValues.Data), np.array(ParameterValues.Timestamp)
