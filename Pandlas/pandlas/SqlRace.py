@@ -77,17 +77,23 @@ class sessionConnection:
         logging.info('Session closed.')
 
 
-def get_samples(session, parameter: str):
+def get_samples(session, parameter: str, start_time: int = None, end_time: int = None) -> tuple[np.ndarray, np.ndarray]:
     """ Get all the samples for a parameter in the session
 
     Args:
         session: MESL.SqlRace.Domain.Session object.
         parameter: The parameter identifier.
+        start_time: Start time to get samples between in int64.
+        end_time: End time to get samples between in int64
 
     Returns:
         tuple of numpy array of samples, timestamps
     """
+    if start_time is None:
+        start_time = session.StartTime
+    if end_time is None:
+        end_time = session.EndTime
     pda = session.CreateParameterDataAccess(parameter)
-    sample_count = pda.GetSamplesCount(session.StartTime, session.EndTime)
-    ParameterValues = pda.GetSamplesBetween(session.StartTime, session.EndTime, sample_count)
+    sample_count = pda.GetSamplesCount(start_time, end_time)
+    ParameterValues = pda.GetSamplesBetween(start_time, end_time, sample_count)
     return np.array(ParameterValues.Data), np.array(ParameterValues.Timestamp)
