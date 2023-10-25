@@ -111,8 +111,8 @@ class SessionFrame:
         newlap = Lap(int(timestamp64), int(lap), Byte(0), f"Lap {lap}",
                      True)
         # TODO: what to do when you add to an existing session.
-        if session.Laps.Count == 0:
-            session.Laps.Add(newlap)
+        if session.LapCollection.Count == 0:
+            session.LapCollection.Add(newlap)
 
         config_identifier = f"{random.randint(0, 999999):05x}"
         config_decription = "SessionFrame generated config"
