@@ -5,8 +5,7 @@ Example to create a session with multiple data rate and merging configs
 import logging
 import pandas as pd
 import numpy as np
-from pandlas.SqlRace import sessionConnection
-
+import pandlas.SqlRace as sr
 logging.basicConfig(level=logging.INFO)
 
 SQLITE_DB_DIR = r'c:\temp\pandlas\temp.ssndb'
@@ -31,6 +30,6 @@ df2.atlas.ParameterGroupIdentifier = "Sub group 1"
 df2.atlas.ApplicationGroupName = "App Group2"
 
 session_identifier = "TestSession"
-with sessionConnection(SQLITE_DB_DIR, session_identifier) as session:
+with sr.SQLiteConnection(SQLITE_DB_DIR, session_identifier) as session:
     df.atlas.to_atlas_session(session)
     df2.atlas.to_atlas_session(session, show_progress_bar=False)
