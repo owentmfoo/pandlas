@@ -46,8 +46,14 @@ Core.LicenceProgramName = "SQLRace"
 Core.Initialize()
 
 #  Create new session
-pathToSession = r"c:\ssn2\test01.ssndb"
-connectionString = rf"DbEngine=SQLite;Data Source={pathToSession};"
+
+# SQLite Connection string
+# pathToSession = r"c:\ssn2\test01.ssndb"
+# connectionString = rf"DbEngine=SQLite;Data Source={pathToSession};"
+
+# SQLRace Database connection string
+connectionString = r"Data Source=M802072\LOCAL;Initial Catalog=SQLRACE01;Integrated Security=True"
+
 sessionManager = SessionManager.CreateSessionManager()
 sessionKey = SessionKey.NewKey()
 sessionIdentifier = 'TestSession'
@@ -61,7 +67,7 @@ session = clientSession.Session
 #  Add 5 lap
 for i in range(5):
     newlap = Lap(int(sessionDate.TimeOfDay.TotalMilliseconds * 1e6 + 60e9 * (i)), i, Byte(0), f"Lap{i+1}", True)
-    session.Laps.Add(newlap)
+    session.LapCollection.Add(newlap)
 
 #  Create parameter groups
 ParameterName = "MyParam"
