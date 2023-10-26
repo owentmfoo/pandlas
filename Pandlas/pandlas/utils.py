@@ -33,7 +33,8 @@ def timestamp2long(timestamp: Union[pd.Timestamp, pd.DatetimeIndex], start_date:
             except IndexError:
                 start_date = timestamp
     ddays = (timestamp - start_date.floor('D')).days
-    ns_in_day = (timestamp.hour * 3600 + timestamp.minute * 60 + timestamp.second) * 1e9 + timestamp.microsecond * 1e3 + timestamp.nanosecond
+    ns_in_day = (
+                        timestamp.hour * 3600 + timestamp.minute * 60 + timestamp.second) * 1e9 + timestamp.microsecond * 1e3 + timestamp.nanosecond
     long = ns_in_day + ddays * 24 * 3600 * 1e9
 
     if isinstance(timestamp, pd.Timestamp):
@@ -45,3 +46,10 @@ def timestamp2long(timestamp: Union[pd.Timestamp, pd.DatetimeIndex], start_date:
         logging.error("Timestamp is too large to be represented by long.")
         raise OverflowError("Timestamp is too large to be represented by long")
     return long
+
+
+def long2timestamp(long: np.ndarray, start_date: Union[pd.Timestamp, np.datetime64]) -> np.ndarray:
+    """Converts ATLAS timestamp in int64 ns from midnight to pandas timestamp."""
+    # TODO: Add test.
+    time_in_day = long.astype('timedelta64[ns]')
+    return np.datetime64(start_date)+time_in_day
