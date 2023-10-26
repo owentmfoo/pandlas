@@ -16,6 +16,15 @@ pandas = "^1.5.3"
 tqdm = "^4.64.1"
 
 
+[tool.poetry.group.test.dependencies]
+pytest = ">=7.4.2,<7.5.0"
+pytest-cov = ">=4.0.0,<4.1.0"
+pytest-env = "^1.1.0"
+
+[tool.pytest_env]
+PYTHONNET_RUNTIME="coreclr"
+PYTHONNET_CORECLR_RUNTIME_CONFIG="C:\\Program Files\\McLaren Applied Technologies\\ATLAS 10\\MAT.Atlas.Host.runtimeconfig.json"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
