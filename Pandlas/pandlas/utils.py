@@ -72,3 +72,10 @@ def long2timestamp(
     else:
         raise TypeError("start_date should be pd.Timestamp or np.datetime64")
     return pd.to_datetime(start_date + time_in_day)
+
+
+def is_port_in_use(port: int) -> bool:
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
+    

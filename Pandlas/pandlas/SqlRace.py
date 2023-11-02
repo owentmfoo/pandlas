@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 import clr
 import logging
 import numpy as np
+from pandlas.utils import is_port_in_use
 
 logger = logging.getLogger(__name__)
 # The path to the main SQL Race DLL. This is the default location when installed with Atlas 10
@@ -42,9 +43,10 @@ if not os.path.isfile(automation_client_dll_path):
 clr.AddReference(automation_client_dll_path)
 
 from MAT.OCS.Core import SessionKey
-from MESL.SqlRace.Domain import Core, SessionManager, FileSessionManager, SessionState
-from System import DateTime
+from MESL.SqlRace.Domain import Core, SessionManager, FileSessionManager, SessionState, RecordersConfiguration
+from System import DateTime, Guid
 from System.Collections.Generic import List
+from System.Net import IPEndPoint, IPAddress
 
 
 def initialise_sqlrace():
@@ -72,26 +74,30 @@ class SessionConnection(ABC):
         raise NotImplementedError
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        self.client.Session.EndData()
         self.client.Close()
         logger.info("Session closed.")
 
 
 class SQLiteConnection(SessionConnection):
     def __init__(
-        self, db_location, sessionIdentifier, session_key: str = None, mode="r"
+        self, db_location, sessionIdentifier, session_key: str = None, mode="r",recorder = False
     ):
         self.client = None
         self.session = None
         self.db_location = db_location
         self.sessionIdentifier = sessionIdentifier
         self.mode = mode
-        if SessionKey is not None:
+        self.recorder = recorder
+        if not (session_key is None):
             self.sessionKey = SessionKey.Parse(session_key)
         else:
             self.sessionKey = None
 
     def create_sqlite(self):
-        connectionString = rf"DbEngine=SQLite;Data Source={self.db_location};"
+        if self.recorder:
+            self.start_recorder()
+        connectionString = f"DbEngine=SQLite;Data Source={self.db_location};Pooling=false;"
         self.sessionKey = SessionKey.NewKey()
         sessionDate = DateTime.Now
         event_type = "Session"
@@ -105,6 +111,19 @@ class SQLiteConnection(SessionConnection):
         self.client = clientSession
         self.session = clientSession.Session
         logger.info("SQLite session created")
+
+    def start_recorder(self):
+        # Find a port that is not in used
+        port = 7300
+        while is_port_in_use(port):
+            port += 1
+
+        # Configure server listener
+        Core.ConfigureServer(True, IPEndPoint(IPAddress.Parse("127.0.0.1"), port))
+        connectionString = f"DbEngine=SQLite;Data Source={self.db_location};Pooling=false;"
+        recorderConfiguration = RecordersConfiguration.GetRecordersConfiguration()
+        recorderConfiguration.AddConfiguration(Guid.NewGuid(), "SQLite", self.db_location, self.db_location,
+                                               connectionString, False)
 
     def load_session(self, session_key: str = None):
         if SessionKey is not None:

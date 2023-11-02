@@ -24,6 +24,7 @@ import clr
 import logging
 from tqdm import tqdm
 from pandlas.utils import timestamp2long
+logger = logging.getLogger(__name__)
 
 # The path to the main SQL Race DLL. This is the default location when installed with Atlas 10
 sql_race_dll_path = r"C:\Program Files\McLaren Applied Technologies\ATLAS 10\MESL.SqlRace.Domain.dll"
@@ -114,65 +115,85 @@ class SessionFrame:
         if session.LapCollection.Count == 0:
             session.LapCollection.Add(newlap)
 
-        config_identifier = f"{random.randint(0, 999999):05x}"
-        config_decription = "SessionFrame generated config"
-        configSetManager = ConfigurationSetManager.CreateConfigurationSetManager()
-        config = configSetManager.Create(session.ConnectionString, config_identifier, config_decription)
+        # check if there is config for it already
+        need_new_config = False
+        for param_name in self._obj.columns:
+            param_identifier = f'{param_name}:{self.ApplicationGroupName}'
+            if not session.ContainsParameter(param_identifier):
+                need_new_config = True
 
-        # Add param group
-        ParameterGroupIdentifier = self.ParameterGroupIdentifier
-        group1 = ParameterGroup(ParameterGroupIdentifier, ParameterGroupIdentifier)
-        config.AddParameterGroup(group1)
+        if need_new_config:
+            config_identifier = f"{random.randint(0, 999999):05x}"
+            config_decription = "SessionFrame generated config"
+            configSetManager = ConfigurationSetManager.CreateConfigurationSetManager()
+            config = configSetManager.Create(session.ConnectionString, config_identifier, config_decription)
 
-        # Add app group
-        ApplicationId = 998
-        ApplicationGroupName = self.ApplicationGroupName
-        parameterGroupIds = List[String]()
-        parameterGroupIds.Add(group1.Identifier)
-        applicationGroup1 = ApplicationGroup(
-            ApplicationGroupName,
-            ApplicationGroupName,
-            ApplicationId,
-            parameterGroupIds)
-        applicationGroup1.SupportsRda = False
-        config.AddGroup(applicationGroup1)
+            # Add param group
+            ParameterGroupIdentifier = self.ParameterGroupIdentifier
+            group1 = ParameterGroup(ParameterGroupIdentifier, ParameterGroupIdentifier)
+            config.AddParameterGroup(group1)
 
-        ParameterGroupIdentifier = self.ParameterGroupIdentifier
-        ApplicationGroupName = self.ApplicationGroupName
+            # Add app group
+            ApplicationId = 998
+            ApplicationGroupName = self.ApplicationGroupName
+            parameterGroupIds = List[String]()
+            parameterGroupIds.Add(group1.Identifier)
+            applicationGroup1 = ApplicationGroup(
+                ApplicationGroupName,
+                ApplicationGroupName,
+                ApplicationId,
+                parameterGroupIds)
+            applicationGroup1.SupportsRda = False
+            config.AddGroup(applicationGroup1)
 
-        # Create channel conversion function
-        ConversionFunctionName = "Simple1To1"
-        config.AddConversion(RationalConversion.CreateSimple1To1Conversion(ConversionFunctionName, "", "%5.2f"))
+            ParameterGroupIdentifier = self.ParameterGroupIdentifier
+            ApplicationGroupName = self.ApplicationGroupName
 
-        # obtain the data
-        for paramName in tqdm(self._obj.columns, desc="Creating channels", disable=not show_progress_bar):
-            timestamps = self._obj.index
-            data = self._obj.loc[:, paramName].to_numpy()
-            dispmax = data.max()
-            dispmin = data.min()
-            warnmax = dispmax
-            warnmin = dispmin
+            # Create channel conversion function
+            ConversionFunctionName = "Simple1To1"
+            config.AddConversion(RationalConversion.CreateSimple1To1Conversion(ConversionFunctionName, "", "%5.2f"))
 
-            # Add param channel
-            MyParamChannelId = session.ReserveNextAvailableRowChannelId() % 2147483647
-            # TODO: this is a stupid workaround because it takes UInt32 but it cast it to Int32 internally...
-            self._add_channel(config, MyParamChannelId, paramName)
+            # obtain the data
+            for param_name in tqdm(self._obj.columns, desc="Creating channels", disable=not show_progress_bar):
+                if session.ContainsParameter(param_identifier):
+                    continue
+                timestamps = self._obj.index
+                data = self._obj.loc[:, param_name].to_numpy()
+                dispmax = data.max()
+                dispmin = data.min()
+                warnmax = dispmax
+                warnmin = dispmin
 
-            #  Add param
-            self._add_param(config, ApplicationGroupName, ConversionFunctionName,
-                            ParameterGroupIdentifier, dispmax, dispmin, paramName, warnmax, warnmin)
+                # Add param channel
+                MyParamChannelId = session.ReserveNextAvailableRowChannelId() % 2147483647
+                # TODO: this is a stupid workaround because it takes UInt32 but it cast it to Int32 internally...
+                self._add_channel(config, MyParamChannelId, param_name)
 
-        try:
-            config.Commit()
-        except:
-            logging.warning(f"cannot commit config {config.Identifier}, config already exist.")
-        session.UseLoggingConfigurationSet(config.Identifier)
+                #  Add param
+                self._add_param(config, ApplicationGroupName, ConversionFunctionName,
+                                ParameterGroupIdentifier, dispmax, dispmin, param_name, warnmax, warnmin)
+
+            try:
+                config.Commit()
+            except:
+                logging.warning(f"cannot commit config {config.Identifier}, config already exist.")
+            session.UseLoggingConfigurationSet(config.Identifier)
+
+        # Obtain the channel Id for the existing parameters
+        for param_name in self._obj.columns:
+            if not session.ContainsParameter(param_identifier):
+                continue
+            param_identifier = f'{param_name}:{self.ApplicationGroupName}'
+            Parameter = session.GetParameter(param_identifier)
+            if Parameter.Channels.Count != 1:
+                logger.warning('Parameter %s contains more than 1 channel', param_identifier)
+            self.paramchannelID[param_name] = Parameter.Channels[0].Id
 
         # write it to the session
-        for paramName in tqdm(self._obj.columns, desc="Adding data", disable=not show_progress_bar):
+        for param_name in tqdm(self._obj.columns, desc="Adding data", disable=not show_progress_bar):
             timestamps = self._obj.index
-            data = self._obj.loc[:, paramName].to_numpy()
-            MyParamChannelId = self.paramchannelID[paramName]
+            data = self._obj.loc[:, param_name].to_numpy()
+            MyParamChannelId = self.paramchannelID[param_name]
             self.add_data(session, MyParamChannelId, data, timestamps)
 
         logging.debug('Data for {}:{} added.'.format(self.ParameterGroupIdentifier, self.ApplicationGroupName))

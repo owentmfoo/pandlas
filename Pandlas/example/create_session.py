@@ -30,6 +30,6 @@ df2.atlas.ParameterGroupIdentifier = "Sub group 1"
 df2.atlas.ApplicationGroupName = "App Group2"
 
 session_identifier = "TestSession"
-with sr.SQLiteConnection(SQLITE_DB_DIR, session_identifier) as session:
+with sr.SQLiteConnection(SQLITE_DB_DIR, session_identifier, mode='w') as session:
     df.atlas.to_atlas_session(session)
     df2.atlas.to_atlas_session(session, show_progress_bar=False)
