@@ -53,7 +53,7 @@ def timestamp2long(
 
 
 def long2timestamp(
-    long: Union[pd.Index, int], start_date: Union[pd.Timestamp, np.datetime64]
+    long: Union[pd.Series, np.ndarray], start_date: Union[pd.Timestamp, np.datetime64]
 ) -> pd.Timestamp:
     """Converts ATLAS timestamp in int64 ns from midnight to pandas timestamp.
 
@@ -69,4 +69,6 @@ def long2timestamp(
         start_date = start_date.to_numpy().astype("datetime64[D]")
     elif isinstance(start_date, np.datetime64):
         start_date = start_date.astype("datetime64[D]")
+    else:
+        raise TypeError("start_date should be pd.Timestamp or np.datetime64")
     return pd.to_datetime(start_date + time_in_day)
