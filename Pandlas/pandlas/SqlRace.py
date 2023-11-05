@@ -118,16 +118,19 @@ class SQLiteConnection(SessionConnection):
         elif self.mode == "w":
             self.create_sqlite()
 
+    @property
+    def connection_string(self):
+        return f"DbEngine=SQLite;Data Source={self.db_location};Pooling=false;"
+
     def create_sqlite(self):
         if self.recorder:
             self.start_recorder()
-        connectionString = f"DbEngine=SQLite;Data Source={self.db_location};Pooling=false;"
         self.sessionKey = SessionKey.NewKey()
         sessionDate = DateTime.Now
         event_type = "Session"
-        logger.debug("Creating new session with connection string %s.", connectionString)
+        logger.debug("Creating new session with connection string %s.", self.connection_string)
         clientSession = self.sessionManager.CreateSession(
-            connectionString,
+            self.connection_string,
             self.sessionKey,
             self.sessionIdentifier,
             sessionDate,
@@ -150,15 +153,14 @@ class SQLiteConnection(SessionConnection):
         logger.info("Opening server lister on port %d.", port)
         # Configure server listener
         Core.ConfigureServer(True, IPEndPoint(IPAddress.Parse("127.0.0.1"), port))
-        connectionString = f"DbEngine=SQLite;Data Source={self.db_location};Pooling=false;"
         recorderConfiguration = RecordersConfiguration.GetRecordersConfiguration()
         recorderConfiguration.AddConfiguration(Guid.NewGuid(), "SQLite", self.db_location, self.db_location,
-                                               connectionString, False)
+                                               self.connection_string, False)
         if self.sessionManager.ServerListener.IsRunning:
             logger.info("Server listener is running: %s.", self.sessionManager.ServerListener.IsRunning)
         else:
             logger.warning("Server listener is running: %s.", self.sessionManager.ServerListener.IsRunning)
-        logger.debug("Configuring recorder with connection string %s.", connectionString)
+        logger.debug("Configuring recorder with connection string %s.", self.connection_string)
 
     def load_session(self, session_key: str = None):
         """Load a historic session from the SQLite database
@@ -204,8 +206,8 @@ class Ssn2Session(SessionConnection):
         summary = self.sessionManager.Find(connectionString, 1, stateList, False)
         if summary.Count != 1:
             logger.warning(
-                "SSN2 contains more than 1 session. Loading session %s. Consider using 'SQLiteConnection' "
-                "instead and specify the session key.",
+                "SSN2 contains more than 1 session. Loading session %s. Consider using "
+                "'SQLiteConnection' instead and specify the session key.",
                 summary.get_Item(0).Identifier,
             )
         self.sessionKey = summary.get_Item(0).Key
@@ -259,16 +261,19 @@ class SQLRaceDBConnection(SessionConnection):
         elif self.mode == "w":
             self.create_sqlrace()
 
+    @property
+    def connection_string(self):
+        return f"server={self.data_source};Initial Catalog={self.database};Trusted_Connection=True;"
+
     def create_sqlrace(self):
         if self.recorder:
             self.start_recorder()
-        connectionString = f"server={self.data_source};Initial Catalog={self.database};Trusted_Connection=True;"
         self.sessionKey = SessionKey.NewKey()
         sessionDate = DateTime.Now
         event_type = "Session"
-        logger.debug("Creating new session with connection string %s.", connectionString)
+        logger.debug("Creating new session with connection string %s.", self.connection_string)
         clientSession = self.sessionManager.CreateSession(
-            connectionString,
+            self.connection_string,
             self.sessionKey,
             self.sessionIdentifier,
             sessionDate,
@@ -291,15 +296,14 @@ class SQLRaceDBConnection(SessionConnection):
         logger.info("Opening server lister on port %d.", port)
         # Configure server listener
         Core.ConfigureServer(True, IPEndPoint(IPAddress.Parse("127.0.0.1"), port))
-        connectionString = f"server={self.data_source};Initial Catalog={self.database};Trusted_Connection=True;"
         recorderConfiguration = RecordersConfiguration.GetRecordersConfiguration()
         recorderConfiguration.AddConfiguration(Guid.NewGuid(), "SQLServer", fr'{self.data_source}\{self.database}',
-                                               fr'{self.data_source}\{self.database}', connectionString, False)
+                                               fr'{self.data_source}\{self.database}', self.connection_string, False)
         if self.sessionManager.ServerListener.IsRunning:
             logger.info("Server listener is running: %s.", self.sessionManager.ServerListener.IsRunning)
         else:
             logger.warning("Server listener is running: %s.", self.sessionManager.ServerListener.IsRunning)
-        logger.debug("Configuring recorder with connection string %s.", connectionString)
+        logger.debug("Configuring recorder with connection string %s.", self.connection_string)
 
     def load_session(self, session_key: str = None):
         """Load a historic session from the SQLRace database
@@ -316,8 +320,7 @@ class SQLRaceDBConnection(SessionConnection):
             raise TypeError(
                 "load_session() missing 1 required positional argument: 'session_key'"
             )
-        connectionString = f"server={self.data_source};Initial Catalog={self.database};Trusted_Connection=True;"
-        self.client = self.sessionManager.Load(self.sessionKey, connectionString)
+        self.client = self.sessionManager.Load(self.sessionKey, self.connection_string)
         self.session = self.client.Session
 
         logger.info("SQLRace Database session loaded.")
