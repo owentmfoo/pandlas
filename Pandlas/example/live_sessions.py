@@ -1,9 +1,12 @@
 """Example to open a live session, and write some data to it"""
 import time
+import logging
 import numpy as np
 import pandas as pd
 from pandlas.SqlRace import SQLiteConnection
 from tqdm import trange
+
+logging.basicConfig(level=logging.INFO)
 
 db_location = r'C:\temp\pandlas\lite.ssndb'
 session_identifier = 'Live Session Demo'

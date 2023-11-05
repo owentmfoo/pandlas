@@ -52,10 +52,10 @@ from System.Net import IPEndPoint, IPAddress
 def initialise_sqlrace():
     """Check if SQLRace is initialised and initialise it if not."""
     if not Core.IsInitialized:
-        logger.info("Initialising SQLRace API")
+        logger.info("Initialising SQLRace API.")
         Core.LicenceProgramName = "SQLRace"
         Core.Initialize()
-        logger.info("SQLRace API Initialised")
+        logger.info("SQLRace API initialised.")
 
 
 class SessionConnection(ABC):
@@ -80,9 +80,27 @@ class SessionConnection(ABC):
 
 
 class SQLiteConnection(SessionConnection):
+    """Represents a connection to a ATLAS session in a SQLite database
+
+    This connections can either be reading from an existing session (mode = 'r') or creating a new session (mode = 'w')
+
+    This Class supports the use of contex manager and will close the client session on exit.
+
+    """
+
     def __init__(
-        self, db_location, sessionIdentifier, session_key: str = None, mode="r",recorder = False
+            self, db_location, sessionIdentifier: str, session_key: str = None, mode="r", recorder=False
     ):
+        """Initializes a connection to a SQLite ATLAS session.
+
+        Args:
+            db_location: Location of SQLite database to connect to.
+            sessionIdentifier: Name of the session identifier.
+            session_key: Session key of the session, leave it as None if creating a new session
+            mode: read 'r' or  write 'w'.
+            recorder: Only applies in write mode, set to Ture to configure the  SQLRace Server Listener and  Recorder,
+            so it can be viewed as a live session in ATLAS.
+        """
         self.client = None
         self.session = None
         self.db_location = db_location
@@ -101,6 +119,7 @@ class SQLiteConnection(SessionConnection):
         self.sessionKey = SessionKey.NewKey()
         sessionDate = DateTime.Now
         event_type = "Session"
+        logger.debug("Creating new session with connection string %s.", connectionString)
         clientSession = self.sessionManager.CreateSession(
             connectionString,
             self.sessionKey,
@@ -110,22 +129,40 @@ class SQLiteConnection(SessionConnection):
         )
         self.client = clientSession
         self.session = clientSession.Session
-        logger.info("SQLite session created")
+        logger.info("SQLite session created.")
 
-    def start_recorder(self):
+    def start_recorder(self, port = 7300):
+        """ Configures the SQL Server listener and recorder
+
+        Args:
+            port: Port number to open the Server Listener on.
+
+        """
         # Find a port that is not in used
-        port = 7300
         while is_port_in_use(port):
             port += 1
-
+        logger.info("Opening server lister on port %d.", port)
         # Configure server listener
         Core.ConfigureServer(True, IPEndPoint(IPAddress.Parse("127.0.0.1"), port))
         connectionString = f"DbEngine=SQLite;Data Source={self.db_location};Pooling=false;"
         recorderConfiguration = RecordersConfiguration.GetRecordersConfiguration()
         recorderConfiguration.AddConfiguration(Guid.NewGuid(), "SQLite", self.db_location, self.db_location,
                                                connectionString, False)
+        if self.sessionManager.ServerListener.IsRunning:
+            logger.info("Server listener is running: %s.", self.sessionManager.ServerListener.IsRunning)
+        else:
+            logger.warning("Server listener is running: %s.", self.sessionManager.ServerListener.IsRunning)
+        logger.debug("Configuring recorder with connection string %s.", connectionString)
 
     def load_session(self, session_key: str = None):
+        """Load a historic session from the SQLite database
+
+        Args:
+            session_key: Optional, updates the sessionKey attribute and opens that session.
+
+        Returns:
+            None, session is opened and can be accessed from the attribute self.session.
+        """
         if SessionKey is not None:
             self.sessionKey = SessionKey.Parse(session_key)
         elif self.sessionKey is None:
@@ -133,16 +170,10 @@ class SQLiteConnection(SessionConnection):
                 "load_session() missing 1 required positional argument: 'session_key'"
             )
         connectionString = f"DbEngine=SQLite;Data Source= {self.db_location}"
-        stateList = List[SessionState]()
-        stateList.Add(SessionState.Historical)
-
-        # Summary
-        summary = self.sessionManager.Find(connectionString, 1, stateList, False)
-        key = summary.get_Item(0).Key
-        self.client = self.sessionManager.Load(key, connectionString)
+        self.client = self.sessionManager.Load(self.sessionKey, connectionString)
         self.session = self.client.Session
 
-        logger.info("SQLite session loaded")
+        logger.info("SQLite session loaded.")
 
     def __enter__(self):
         if self.mode == "r":
@@ -162,6 +193,7 @@ class Ssn2Session(SessionConnection):
         self.db_location = file_location
 
     def load_session(self):
+        """Load session from the SSN2 file."""
         connectionString = f"DbEngine=SQLite;Data Source= {self.db_location}"
         stateList = List[SessionState]()
         stateList.Add(SessionState.Historical)
@@ -178,7 +210,7 @@ class Ssn2Session(SessionConnection):
         self.client = self.sessionManager.Load(self.sessionKey, connectionString)
         self.session = self.client.Session
 
-        logger.info("SSN2 session loaded")
+        logger.info("SSN2 session loaded.")
 
     def __enter__(self):
         self.load_session()
@@ -186,7 +218,7 @@ class Ssn2Session(SessionConnection):
 
 
 def get_samples(
-    session, parameter: str, start_time: int = None, end_time: int = None
+        session, parameter: str, start_time: int = None, end_time: int = None
 ) -> tuple[np.ndarray, np.ndarray]:
     """Get all the samples for a parameter in the session
 
