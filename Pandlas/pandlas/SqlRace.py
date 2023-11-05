@@ -107,10 +107,16 @@ class SQLiteConnection(SessionConnection):
         self.sessionIdentifier = sessionIdentifier
         self.mode = mode
         self.recorder = recorder
+
         if not (session_key is None):
             self.sessionKey = SessionKey.Parse(session_key)
         else:
             self.sessionKey = None
+
+        if self.mode == "r":
+            self.load_session()
+        elif self.mode == "w":
+            self.create_sqlite()
 
     def create_sqlite(self):
         if self.recorder:
@@ -176,10 +182,6 @@ class SQLiteConnection(SessionConnection):
         logger.info("SQLite session loaded.")
 
     def __enter__(self):
-        if self.mode == "r":
-            self.load_session()
-        elif self.mode == "w":
-            self.create_sqlite()
         return self.session
 
 
@@ -214,6 +216,113 @@ class Ssn2Session(SessionConnection):
 
     def __enter__(self):
         self.load_session()
+        return self.session
+
+
+class SQLRaceDBConnection(SessionConnection):
+    """Represents a connection to a ATLAS session in a SQLRace database
+
+    This connections can either be reading from an existing session (mode = 'r') or creating a new session (mode = 'w')
+
+    This Class supports the use of contex manager and will close the client session on exit.
+
+    """
+    def __init__(
+            self, data_source, database, sessionIdentifier: str, session_key: str = None, mode="r", recorder=False
+    ):
+        """Initializes a connection to a SQLite ATLAS session.
+
+        Args:
+            data_source: Name or network address of the instance of SQL Server to connect to.
+            database: Name of the database
+            sessionIdentifier: Name of the session identifier.
+            session_key: Session key of the session, leave it as None if creating a new session.
+            mode: read 'r' or  write 'w'.
+            recorder: Only applies in write mode, set to Ture to configure the  SQLRace Server Listener and  Recorder,
+            so it can be viewed as a live session in ATLAS.
+        """
+        self.client = None
+        self.session = None
+        self.data_source = data_source
+        self.database = database
+        self.sessionIdentifier = sessionIdentifier
+        self.mode = mode
+        self.recorder = recorder
+
+        if not (session_key is None):
+            self.sessionKey = SessionKey.Parse(session_key)
+        else:
+            self.sessionKey = None
+
+        if self.mode == "r":
+            self.load_session()
+        elif self.mode == "w":
+            self.create_sqlrace()
+
+    def create_sqlrace(self):
+        if self.recorder:
+            self.start_recorder()
+        connectionString = f"server={self.data_source};Initial Catalog={self.database};Trusted_Connection=True;"
+        self.sessionKey = SessionKey.NewKey()
+        sessionDate = DateTime.Now
+        event_type = "Session"
+        logger.debug("Creating new session with connection string %s.", connectionString)
+        clientSession = self.sessionManager.CreateSession(
+            connectionString,
+            self.sessionKey,
+            self.sessionIdentifier,
+            sessionDate,
+            event_type,
+        )
+        self.client = clientSession
+        self.session = clientSession.Session
+        logger.info("SQLRace Database session created.")
+
+    def start_recorder(self, port=7300):
+        """ Configures the SQL Server listener and recorder
+
+        Args:
+            port: Port number to open the Server Listener on.
+
+        """
+        # Find a port that is not in used
+        while is_port_in_use(port):
+            port += 1
+        logger.info("Opening server lister on port %d.", port)
+        # Configure server listener
+        Core.ConfigureServer(True, IPEndPoint(IPAddress.Parse("127.0.0.1"), port))
+        connectionString = f"server={self.data_source};Initial Catalog={self.database};Trusted_Connection=True;"
+        recorderConfiguration = RecordersConfiguration.GetRecordersConfiguration()
+        recorderConfiguration.AddConfiguration(Guid.NewGuid(), "SQLServer", fr'{self.data_source}\{self.database}',
+                                               fr'{self.data_source}\{self.database}', connectionString, False)
+        if self.sessionManager.ServerListener.IsRunning:
+            logger.info("Server listener is running: %s.", self.sessionManager.ServerListener.IsRunning)
+        else:
+            logger.warning("Server listener is running: %s.", self.sessionManager.ServerListener.IsRunning)
+        logger.debug("Configuring recorder with connection string %s.", connectionString)
+
+    def load_session(self, session_key: str = None):
+        """Load a historic session from the SQLRace database
+
+        Args:
+            session_key: Optional, updates the sessionKey attribute and opens that session.
+
+        Returns:
+            session is opened and can be accessed from the attribute self.session.
+        """
+        if SessionKey is not None:
+            self.sessionKey = SessionKey.Parse(session_key)
+        elif self.sessionKey is None:
+            raise TypeError(
+                "load_session() missing 1 required positional argument: 'session_key'"
+            )
+        connectionString = f"server={self.data_source};Initial Catalog={self.database};Trusted_Connection=True;"
+        self.client = self.sessionManager.Load(self.sessionKey, connectionString)
+        self.session = self.client.Session
+
+        logger.info("SQLRace Database session loaded.")
+
+    def __enter__(self):
         return self.session
 
 
