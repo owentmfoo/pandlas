@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 import clr
 import logging
 import numpy as np
+import pandas as pd
 from pandlas.utils import is_port_in_use
 
 logger = logging.getLogger(__name__)
@@ -296,6 +297,8 @@ class SQLRaceDBConnection(SessionConnection):
         logger.info("Opening server lister on port %d.", port)
         # Configure server listener
         Core.ConfigureServer(True, IPEndPoint(IPAddress.Parse("127.0.0.1"), port))
+
+        # Configure recorder
         recorderConfiguration = RecordersConfiguration.GetRecordersConfiguration()
         recorderConfiguration.AddConfiguration(Guid.NewGuid(), "SQLServer", fr'{self.data_source}\{self.database}',
                                                fr'{self.data_source}\{self.database}', self.connection_string, False)
@@ -351,3 +354,45 @@ def get_samples(
     sample_count = pda.GetSamplesCount(start_time, end_time)
     ParameterValues = pda.GetSamplesBetween(start_time, end_time, sample_count)
     return np.array(ParameterValues.Data), np.array(ParameterValues.Timestamp)
+
+
+def extract_data(data_source:str,database:str,session_key:str) -> pd.DataFrame:
+    """Temp function to extract KX data
+
+    Args:
+        data_source: Name or network address of the instance of SQL Server to connect to.
+        database: Name of the database
+        session_key: Session key of the session, leave it as None if creating a new session.
+
+    Returns:
+        pd.DataFrame of all extracted samples.
+    """
+    # Get the list of parameters to extract from the pul file
+    filepath = os.path.join(os.path.dirname(__file__), 'pul/FIA_Unlock_List.pul')
+    with open(filepath, mode='r') as file:
+        lines = file.readlines()
+    parameter_list = [p.rstrip('=1\n') for p in lines[8:]]
+    parameter_list += ["NLap:Chassis"]
+
+    with sr.SQLRaceDBConnection(data_source,database,session_key=session_key) as session:
+        # itms = session.Items
+        # session_details = {itms.get_Item(i).Name: itms.get_Item(i).Value for i in range(itms.Count)}
+        # start_date = session_details['Date of recording']
+
+        start_date = session.TimeOfRecording.Date.ToString("yyyy-MM-dd")
+        start_date = np.datetime64(start_date.replace(' ', 'T'), 'ns')
+        df = []
+        for parameter in tqdm.tqdm(parameter_list):
+            logger.debug("Getting data for parameter %s", parameter)
+            data, long = sr.get_samples(session, parameter)
+            timestamp = long2timestamp(long, start_date=start_date)
+            param_series = pd.Series(index=timestamp, data=data, name=parameter)
+            df.append(param_series)
+        logger.info("Combing data into a single dataframe.")
+        df = pd.concat(df, axis=1)
+        df.loc[:, "SessionKey"] = session.Key.ToString()
+
+        # save the dataframe to the file
+        df.to_parquet(f'{session.Identifier}.parquet')
+    return df
+
