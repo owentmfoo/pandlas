@@ -1,11 +1,12 @@
 [tool.poetry]
 name = "Pandlas"
-version = "0.1.4"
-description = ""
+version = "0.2.1a2"
+description = "An examaple package demonstrating how to use the SQLRace API. This package is not maintained nor officially supported."
 authors = ["Owen Foo <owen.foo@mclarenapplied.com>"]
 readme = "README.md"
 classifiers = [
     "Private :: Do Not Upload",
+    "Development Status :: 7 - Inactive",
 ]
 
 [tool.poetry.dependencies]
@@ -14,6 +15,15 @@ pythonnet = "3.0.1"
 pandas = "^1.5.3"
 tqdm = "^4.64.1"
 
+
+[tool.poetry.group.test.dependencies]
+pytest = ">=7.4.2,<7.5.0"
+pytest-cov = ">=4.0.0,<4.1.0"
+pytest-env = "^1.1.0"
+
+[tool.pytest_env]
+PYTHONNET_RUNTIME="coreclr"
+PYTHONNET_CORECLR_RUNTIME_CONFIG="C:\\Program Files\\McLaren Applied Technologies\\ATLAS 10\\MAT.Atlas.Host.runtimeconfig.json"
 
 [build-system]
 requires = ["poetry-core"]
