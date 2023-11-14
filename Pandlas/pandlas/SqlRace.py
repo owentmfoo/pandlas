@@ -5,8 +5,10 @@ from abc import ABC, abstractmethod
 import clr
 import logging
 import numpy as np
+import tqdm
 import pandas as pd
-from pandlas.utils import is_port_in_use
+from pandlas.utils import is_port_in_use,long2timestamp
+
 
 logger = logging.getLogger(__name__)
 # The path to the main SQL Race DLL. This is the default location when installed with Atlas 10
@@ -90,7 +92,7 @@ class SQLiteConnection(SessionConnection):
     """
 
     def __init__(
-            self, db_location, sessionIdentifier: str, session_key: str = None, mode="r", recorder=False
+            self, db_location, sessionIdentifier: str='', session_key: str = None, mode="r", recorder=False
     ):
         """Initializes a connection to a SQLite ATLAS session.
 
@@ -115,7 +117,7 @@ class SQLiteConnection(SessionConnection):
             self.sessionKey = None
 
         if self.mode == "r":
-            self.load_session()
+            self.load_session(session_key)
         elif self.mode == "w":
             self.create_sqlite()
 
@@ -172,14 +174,13 @@ class SQLiteConnection(SessionConnection):
         Returns:
             None, session is opened and can be accessed from the attribute self.session.
         """
-        if SessionKey is not None:
+        if session_key is not None:
             self.sessionKey = SessionKey.Parse(session_key)
         elif self.sessionKey is None:
             raise TypeError(
                 "load_session() missing 1 required positional argument: 'session_key'"
             )
-        connectionString = f"DbEngine=SQLite;Data Source= {self.db_location}"
-        self.client = self.sessionManager.Load(self.sessionKey, connectionString)
+        self.client = self.sessionManager.Load(self.sessionKey, self.connection_string)
         self.session = self.client.Session
 
         logger.info("SQLite session loaded.")
@@ -231,7 +232,7 @@ class SQLRaceDBConnection(SessionConnection):
 
     """
     def __init__(
-            self, data_source, database, sessionIdentifier: str, session_key: str = None, mode="r", recorder=False
+            self, data_source, database, sessionIdentifier: str='', session_key: str = None, mode="r", recorder=False
     ):
         """Initializes a connection to a SQLite ATLAS session.
 
@@ -258,7 +259,7 @@ class SQLRaceDBConnection(SessionConnection):
             self.sessionKey = None
 
         if self.mode == "r":
-            self.load_session()
+            self.load_session(session_key)
         elif self.mode == "w":
             self.create_sqlrace()
 
@@ -317,7 +318,7 @@ class SQLRaceDBConnection(SessionConnection):
         Returns:
             session is opened and can be accessed from the attribute self.session.
         """
-        if SessionKey is not None:
+        if session_key is not None:
             self.sessionKey = SessionKey.Parse(session_key)
         elif self.sessionKey is None:
             raise TypeError(
@@ -374,7 +375,7 @@ def extract_data(data_source:str,database:str,session_key:str) -> pd.DataFrame:
     parameter_list = [p.rstrip('=1\n') for p in lines[8:]]
     parameter_list += ["NLap:Chassis"]
 
-    with sr.SQLRaceDBConnection(data_source,database,session_key=session_key) as session:
+    with SQLRaceDBConnection(data_source,database,session_key=session_key) as session:
         # itms = session.Items
         # session_details = {itms.get_Item(i).Name: itms.get_Item(i).Value for i in range(itms.Count)}
         # start_date = session_details['Date of recording']
@@ -384,7 +385,7 @@ def extract_data(data_source:str,database:str,session_key:str) -> pd.DataFrame:
         df = []
         for parameter in tqdm.tqdm(parameter_list):
             logger.debug("Getting data for parameter %s", parameter)
-            data, long = sr.get_samples(session, parameter)
+            data, long = get_samples(session, parameter)
             timestamp = long2timestamp(long, start_date=start_date)
             param_series = pd.Series(index=timestamp, data=data, name=parameter)
             df.append(param_series)
