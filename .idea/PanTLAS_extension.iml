@@ -2,9 +2,9 @@
 <module type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
-      <sourceFolder url="file://$MODULE_DIR$/Pandlas" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/pandlas" isTestSource="false" />
     </content>
-    <orderEntry type="jdk" jdkName="C:\Users\owen.foo\AppData\Local\anaconda3\envs\pandlas" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="C:\Users\owen.foo\AppData\Local\anaconda3\envs\pandlas (2)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="PackageRequirementsSettings">
