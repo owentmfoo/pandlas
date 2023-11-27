@@ -155,12 +155,11 @@ class SessionFrame:
             config.AddParameterGroup(group1)
 
             # Add app group
-            application_id = 998
             applicationGroupName = self.ApplicationGroupName  # .NET objects, so pylint: disable=invalid-name
             parameterGroupIds = List[String]()  # .NET objects, so pylint: disable=invalid-name
             parameterGroupIds.Add(group1.Identifier)  # .NET objects, so pylint: disable=invalid-name
             applicationGroup = ApplicationGroup(  # .NET objects, so pylint: disable=invalid-name
-                applicationGroupName, applicationGroupName, application_id, parameterGroupIds
+                applicationGroupName, applicationGroupName, None, parameterGroupIds
             )
             applicationGroup.SupportsRda = False
             config.AddGroup(applicationGroup)
