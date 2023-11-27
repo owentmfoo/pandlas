@@ -117,7 +117,7 @@ class SessionFrame:
             raise TypeError("SessionFrame index is not pd.DatetimeIndex, unable to export to ssn2")
 
         # remove rows that contain no data at all and sort by time.
-        self._obj = self._obj.dropna(axis=1, how='all').sort_index()
+        self._obj = self._obj.dropna(axis=1, how="all").sort_index()
 
         # add a lap at the start of the session
         # TODO: add the rest of the laps
@@ -130,7 +130,7 @@ class SessionFrame:
         newlap = Lap(int(timestamp64), int(lap), Byte(0), f"Lap {lap}", True)
         # TODO: what to do when you add to an existing session.
         if session.LapCollection.Count == 0:
-            logger.debug('No lap present, automatically adding lap to the start.')
+            logger.debug("No lap present, automatically adding lap to the start.")
             session.LapCollection.Add(newlap)
 
         # check if there is config for it already
@@ -141,7 +141,7 @@ class SessionFrame:
                 need_new_config = True
 
         if need_new_config:
-            logger.debug('Creating new config.')
+            logger.debug("Creating new config.")
             config_identifier = f"{random.randint(0, 999999):05x}"  # .NET objects, so pylint: disable=invalid-name
             config_decription = "SessionFrame generated config"
             configSetManager = ConfigurationSetManager.CreateConfigurationSetManager()  # .NET objects, so pylint: disable=invalid-name
@@ -180,7 +180,7 @@ class SessionFrame:
                 param_identifier = f"{param_name}:{self.ApplicationGroupName}"
                 # if parameter exists already, then do not create a new parameter
                 if session.ContainsParameter(param_identifier):
-                    logger.debug(f'Parameter identifier already exists: {param_identifier}.')
+                    logger.debug("Parameter identifier already exists: %s.", {param_identifier})
                     continue
 
                 data = self._obj.loc[:, param_name].dropna().to_numpy()
@@ -211,7 +211,7 @@ class SessionFrame:
             try:
                 config.Commit()
             except:
-                logging.warning("cannot commit config %s, config already exist.", config.Identifier)
+                logging.warning("Cannot commit config %s, config already exist.", config.Identifier)
             session.UseLoggingConfigurationSet(config.Identifier)
 
         # Obtain the channel Id for the existing parameters
@@ -222,7 +222,7 @@ class SessionFrame:
             param_identifier = f"{param_name}:{self.ApplicationGroupName}"
             parameter = session.GetParameter(param_identifier)
             if parameter.Channels.Count != 1:
-                logger.warning("parameter %s contains more than 1 channel", param_identifier)
+                logger.warning("Parameter %s contains more than 1 channel.", param_identifier)
             self.paramchannelID[param_name] = parameter.Channels[0].Id
 
         # write it to the session
@@ -232,8 +232,7 @@ class SessionFrame:
             series = self._obj.loc[:, param_name].dropna()
             timestamps = series.index
             data = series.to_numpy()
-            myParamChannelId = self.paramchannelID[
-                param_name]  # .NET objects, so pylint: disable=invalid-name
+            myParamChannelId = self.paramchannelID[param_name]  # .NET objects, so pylint: disable=invalid-name
             self.add_data(session, myParamChannelId, data, timestamps)
 
         logging.debug(
