@@ -116,6 +116,9 @@ class SessionFrame:
         if not isinstance(self._obj.index, pd.DatetimeIndex):
             raise TypeError("SessionFrame index is not pd.DatetimeIndex, unable to export to ssn2")
 
+        # remove rows that contain no data at all and sort by time.
+        self._obj = self._obj.dropna(axis=1, how='all').sort_index()
+
         # add a lap at the start of the session
         # TODO: add the rest of the laps
         timestamp = self._obj.index[0]
@@ -127,6 +130,7 @@ class SessionFrame:
         newlap = Lap(int(timestamp64), int(lap), Byte(0), f"Lap {lap}", True)
         # TODO: what to do when you add to an existing session.
         if session.LapCollection.Count == 0:
+            logger.debug('No lap present, automatically adding lap to the start.')
             session.LapCollection.Add(newlap)
 
         # check if there is config for it already
@@ -137,6 +141,7 @@ class SessionFrame:
                 need_new_config = True
 
         if need_new_config:
+            logger.debug('Creating new config.')
             config_identifier = f"{random.randint(0, 999999):05x}"  # .NET objects, so pylint: disable=invalid-name
             config_decription = "SessionFrame generated config"
             configSetManager = ConfigurationSetManager.CreateConfigurationSetManager()  # .NET objects, so pylint: disable=invalid-name
@@ -176,9 +181,10 @@ class SessionFrame:
                 param_identifier = f"{param_name}:{self.ApplicationGroupName}"
                 # if parameter exists already, then do not create a new parameter
                 if session.ContainsParameter(param_identifier):
+                    logger.debug(f'Parameter identifier already exists: {param_identifier}.')
                     continue
 
-                data = self._obj.loc[:, param_name].to_numpy()
+                data = self._obj.loc[:, param_name].dropna().to_numpy()
                 dispmax = data.max()
                 dispmin = data.min()
                 warnmax = dispmax
@@ -206,7 +212,7 @@ class SessionFrame:
             try:
                 config.Commit()
             except:
-                logging.warning("cannot commit config %s, config already exist.",config.Identifier)
+                logging.warning("cannot commit config %s, config already exist.", config.Identifier)
             session.UseLoggingConfigurationSet(config.Identifier)
 
         # Obtain the channel Id for the existing parameters
@@ -224,9 +230,11 @@ class SessionFrame:
         for param_name in tqdm(
             self._obj.columns, desc="Adding data", disable=not show_progress_bar
         ):
-            timestamps = self._obj.index
-            data = self._obj.loc[:, param_name].to_numpy()
-            myParamChannelId = self.paramchannelID[param_name]  # .NET objects, so pylint: disable=invalid-name
+            series = self._obj.loc[:, param_name].dropna()
+            timestamps = series.index
+            data = series.to_numpy()
+            myParamChannelId = self.paramchannelID[
+                param_name]  # .NET objects, so pylint: disable=invalid-name
             self.add_data(session, myParamChannelId, data, timestamps)
 
         logging.debug(
