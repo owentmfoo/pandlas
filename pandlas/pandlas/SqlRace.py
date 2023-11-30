@@ -5,7 +5,10 @@ from abc import ABC, abstractmethod
 import clr
 import logging
 import numpy as np
-from pandlas.utils import is_port_in_use
+import tqdm
+import pandas as pd
+from pandlas.utils import is_port_in_use,long2timestamp
+
 
 logger = logging.getLogger(__name__)
 # The path to the main SQL Race DLL. This is the default location when installed with Atlas 10
@@ -89,7 +92,7 @@ class SQLiteConnection(SessionConnection):
     """
 
     def __init__(
-            self, db_location, sessionIdentifier: str, session_key: str = None, mode="r", recorder=False
+            self, db_location, sessionIdentifier: str='', session_key: str = None, mode="r", recorder=False
     ):
         """Initializes a connection to a SQLite ATLAS session.
 
@@ -114,7 +117,7 @@ class SQLiteConnection(SessionConnection):
             self.sessionKey = None
 
         if self.mode == "r":
-            self.load_session()
+            self.load_session(session_key)
         elif self.mode == "w":
             self.create_sqlite()
 
@@ -171,14 +174,13 @@ class SQLiteConnection(SessionConnection):
         Returns:
             None, session is opened and can be accessed from the attribute self.session.
         """
-        if SessionKey is not None:
+        if session_key is not None:
             self.sessionKey = SessionKey.Parse(session_key)
         elif self.sessionKey is None:
             raise TypeError(
                 "load_session() missing 1 required positional argument: 'session_key'"
             )
-        connectionString = f"DbEngine=SQLite;Data Source= {self.db_location}"
-        self.client = self.sessionManager.Load(self.sessionKey, connectionString)
+        self.client = self.sessionManager.Load(self.sessionKey, self.connection_string)
         self.session = self.client.Session
 
         logger.info("SQLite session loaded.")
@@ -230,7 +232,7 @@ class SQLRaceDBConnection(SessionConnection):
 
     """
     def __init__(
-            self, data_source, database, sessionIdentifier: str, session_key: str = None, mode="r", recorder=False
+            self, data_source, database, sessionIdentifier: str='', session_key: str = None, mode="r", recorder=False
     ):
         """Initializes a connection to a SQLite ATLAS session.
 
@@ -257,7 +259,7 @@ class SQLRaceDBConnection(SessionConnection):
             self.sessionKey = None
 
         if self.mode == "r":
-            self.load_session()
+            self.load_session(session_key)
         elif self.mode == "w":
             self.create_sqlrace()
 
@@ -296,6 +298,8 @@ class SQLRaceDBConnection(SessionConnection):
         logger.info("Opening server lister on port %d.", port)
         # Configure server listener
         Core.ConfigureServer(True, IPEndPoint(IPAddress.Parse("127.0.0.1"), port))
+
+        # Configure recorder
         recorderConfiguration = RecordersConfiguration.GetRecordersConfiguration()
         recorderConfiguration.AddConfiguration(Guid.NewGuid(), "SQLServer", fr'{self.data_source}\{self.database}',
                                                fr'{self.data_source}\{self.database}', self.connection_string, False)
@@ -314,7 +318,7 @@ class SQLRaceDBConnection(SessionConnection):
         Returns:
             session is opened and can be accessed from the attribute self.session.
         """
-        if SessionKey is not None:
+        if session_key is not None:
             self.sessionKey = SessionKey.Parse(session_key)
         elif self.sessionKey is None:
             raise TypeError(

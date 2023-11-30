@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Pandlas"
-version = "0.2.1a2"
+version = "0.2.1a3"
 description = "An examaple package demonstrating how to use the SQLRace API. This package is not maintained nor officially supported."
 authors = ["Owen Foo <owen.foo@mclarenapplied.com>"]
 readme = "README.md"
@@ -24,6 +24,11 @@ pytest-env = "^1.1.0"
 [tool.pytest_env]
 PYTHONNET_RUNTIME="coreclr"
 PYTHONNET_CORECLR_RUNTIME_CONFIG="C:\\Program Files\\McLaren Applied Technologies\\ATLAS 10\\MAT.Atlas.Host.runtimeconfig.json"
+
+[tool.pytest.ini_options]
+markers = [
+"atlaslicensed: requires ATLAS to be installed and licenced.",
+]
 
 [build-system]
 requires = ["poetry-core"]
