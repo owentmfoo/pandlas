@@ -85,16 +85,9 @@ class SessionFrame:
         self.ParameterGroupIdentifier = "SessionFrame"  # .NET objects, so pylint: disable=invalid-name
         self.ApplicationGroupName = "MyApp"  # .NET objects, so pylint: disable=invalid-name
         self.paramchannelID = {}  # .NET objects, so pylint: disable=invalid-name
-        if not isinstance(self._obj.index, pd.DatetimeIndex):
-            warnings.warn(
-                "DataFrame index is not pd.DatetimeIndex, attempting to parse index to "
-                "DatetimeIndex."
-            )
-            try:
-                self._obj.index = pd.to_datetime(self._obj.index)
-                warnings.warn("parse success.")
-            except:
-                warnings.warn("parse failed.")
+        self.units = {} # TODO: move to setter method and check for datatype
+        self.descriptions = {} # TODO: move to setter method and check for datatype
+        self.display_format = {} # TODO: move to setter method and check for datatype and format
 
     def to_atlas_session(self, session: Session, show_progress_bar: bool = True):
         """Add the contents of the DataFrame to the ATLAS session.
@@ -106,6 +99,23 @@ class SessionFrame:
         If there is a parameter with the same name and app group present in the session, it will
         just add to that existing channel.
 
+        When creating new parameters in the config, Pandlas will utilise df.atlas.unit attribute to
+        set the parameter unit. This should be provided in the form of a dictionary, where the keys
+        are the parameter identifiers and the values are the units, both in string.
+        If none have been provided, a default value of no unit "" will be set.
+
+        When creating new parameters in the config, Pandlas will utilise df.atlas.description
+        attribute to set the parameter description. This should be provided in the form of a
+        dictionary, where the keys are the parameter identifiers and the values are the units, both
+        in string.
+        If none have been provided, a default value of f"{parameter_name} description" will be set.
+
+        When creating new parameters in the config, Pandlas will utilise df.atlas.display_format
+        attribute to set the parameter format override. This should be provided in the form of a
+        dictionary, where the keys are the parameter identifiers and the values are the units, both
+        in string. The format override must be in a valid form.
+        If none have been provided, a default value of "%5.2f" will be set.
+
         Args:
             session: MESL.SqlRace.Domain.Session to the data to.
             show_progress_bar: Show progress bar when creating config and adding data.
@@ -114,7 +124,18 @@ class SessionFrame:
         """
 
         if not isinstance(self._obj.index, pd.DatetimeIndex):
-            raise TypeError("SessionFrame index is not pd.DatetimeIndex, unable to export to ssn2")
+            warnings.warn(
+                "DataFrame index is not pd.DatetimeIndex, attempting to parse index to "
+                "DatetimeIndex."
+            )
+            try:
+                self._obj.index = pd.to_datetime(self._obj.index)
+                warnings.warn("parse success.")
+            except:
+                warnings.warn("parse failed.")
+
+        if not isinstance(self._obj.index, pd.DatetimeIndex):
+            raise AttributeError("DataFrame index is not pd.DatetimeIndex, unable to export to ssn2")
 
         # remove rows that contain no data at all and sort by time.
         self._obj = self._obj.dropna(axis=1, how="all").sort_index()
@@ -270,10 +291,15 @@ class SessionFrame:
         parameterIdentifier = f"{parameter_name}:{ApplicationGroupName}"  # .NET objects, so pylint: disable=invalid-name
         parameterGroupIdentifiers = List[String]()  # .NET objects, so pylint: disable=invalid-name
         parameterGroupIdentifiers.Add(ParameterGroupIdentifier)
+
+        param_description = self.descriptions.get(parameterIdentifier, f"{parameter_name} description")
+        param_format = self.display_format.get(parameterIdentifier, "%5.2f")
+        param_unit = self.units.get(parameterIdentifier, "")
+
         myParameter = Parameter(  # .NET objects, so pylint: disable=invalid-name
             parameterIdentifier,
             parameter_name,
-            parameter_name + "Description",
+            param_description,
             float(display_max),
             float(display_min),
             float(warning_max),
@@ -285,6 +311,8 @@ class SessionFrame:
             parameterGroupIdentifiers,
             myParamChannelId,
             ApplicationGroupName,
+            param_format,
+            param_unit
         )
         config.AddParameter(myParameter)
 
