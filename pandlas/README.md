@@ -3,6 +3,9 @@
 A Pandas extension for ATLAS, intended to demonstrate how to use the SQLRace API. 
 **This package is not maintained nor officially supported.** 
 
+[![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/pylint-dev/pylint)
+
+
 This package utilises API from ATLAS and as such requires a valid ATLAS licence with the SQLRace option included.
 
 Package dependencies
