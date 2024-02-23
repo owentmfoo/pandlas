@@ -287,7 +287,8 @@ class SessionFrame:
 
         """
         # TODO: guard again NaNs
-        myParamChannelId = self.paramchannelID[parameter_name]  # .NET objects, so pylint: disable=invalid-name
+        myParamChannelId = List[UInt32]()  # .NET objects, so pylint: disable=invalid-name
+        myParamChannelId.Add(self.paramchannelID[parameter_name])
         parameterIdentifier = f"{parameter_name}:{ApplicationGroupName}"  # .NET objects, so pylint: disable=invalid-name
         parameterGroupIdentifiers = List[String]()  # .NET objects, so pylint: disable=invalid-name
         parameterGroupIdentifiers.Add(ParameterGroupIdentifier)
