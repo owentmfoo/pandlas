@@ -60,7 +60,7 @@ if not os.path.isfile(SSN2SPLITER_DLL_PATH):
 
 clr.AddReference(SSN2SPLITER_DLL_PATH)  # pylint: disable=no-member
 
-from System.Collections.Generic import *  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
+from System.Collections.Generic import List as NETList  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
 from System.Collections.ObjectModel import *  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
 from System import *  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
 
@@ -177,7 +177,7 @@ class SessionFrame:
 
             # Add app group
             applicationGroupName = self.ApplicationGroupName  # .NET objects, so pylint: disable=invalid-name
-            parameterGroupIds = List[String]()  # .NET objects, so pylint: disable=invalid-name
+            parameterGroupIds = NETList[String]()  # .NET objects, so pylint: disable=invalid-name
             parameterGroupIds.Add(group1.Identifier)  # .NET objects, so pylint: disable=invalid-name
             applicationGroup = ApplicationGroup(  # .NET objects, so pylint: disable=invalid-name
                 applicationGroupName, applicationGroupName, None, parameterGroupIds
@@ -287,10 +287,10 @@ class SessionFrame:
 
         """
         # TODO: guard again NaNs
-        myParamChannelId = List[UInt32]()  # .NET objects, so pylint: disable=invalid-name
+        myParamChannelId = NETList[UInt32]()  # .NET objects, so pylint: disable=invalid-name
         myParamChannelId.Add(self.paramchannelID[parameter_name])
         parameterIdentifier = f"{parameter_name}:{ApplicationGroupName}"  # .NET objects, so pylint: disable=invalid-name
-        parameterGroupIdentifiers = List[String]()  # .NET objects, so pylint: disable=invalid-name
+        parameterGroupIdentifiers = NETList[String]()  # .NET objects, so pylint: disable=invalid-name
         parameterGroupIdentifiers.Add(ParameterGroupIdentifier)
 
         param_description = self.descriptions.get(parameterIdentifier, f"{parameter_name} description")
@@ -357,7 +357,7 @@ class SessionFrame:
             )
         timestamps = timestamp2long(timestamps)
 
-        channelIds = List[UInt32]()  # .NET objects, so pylint: disable=invalid-name
+        channelIds = NETList[UInt32]()  # .NET objects, so pylint: disable=invalid-name
         channelIds.Add(channel_id)
 
         # databytes = data.astype(np.float32).tobytes()
