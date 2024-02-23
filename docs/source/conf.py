@@ -22,7 +22,8 @@ os.environ['PYTHONNET_CORECLR_RUNTIME_CONFIG'] = r'C:\Program Files\McLaren Appl
 project = 'Pandlas'
 copyright = '2024, Owen Foo'
 author = 'Owen Foo'
-release = '0.2.1.a4'
+from importlib.metadata import version as package_version
+release = package_version("pandlas")
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -43,8 +44,8 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'alabaster'
-html_static_path = ['_static']
+html_theme = 'classic'
+# html_static_path = ['_static']
 
 
 # useful article to generate class methods

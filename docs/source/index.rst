@@ -6,13 +6,11 @@
 Welcome to Pandlas's documentation!
 ===================================
 
-.. autosummary::
-   :toctree: _autosummary
-   :template: custom_module.rst
-   :recursive:
+Pandlas is an example package demonstrating how to use the SQLRace API.
 
-   pandlas
+**This package is not maintained nor officially supported.**
 
+This package utilises API from ATLAS and as such requires a valid ATLAS licence with the SQLRace option included.
 
 
 Contents

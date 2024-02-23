@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Pandlas"
-version = "0.2.1a3"
+version = "0.2.2a1"
 description = "An example package demonstrating how to use the SQLRace API. This package is not maintained nor officially supported."
 authors = ["Owen Foo <owen.foo@mclarenapplied.com>"]
 readme = "README.md"
@@ -20,6 +20,12 @@ tqdm = "^4.64.1"
 pytest = ">=7.4.2,<7.5.0"
 pytest-cov = ">=4.0.0,<4.1.0"
 pytest-env = "^1.1.0"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+sphinx = "^7.2.6"
 
 [tool.pytest_env]
 PYTHONNET_RUNTIME="coreclr"
