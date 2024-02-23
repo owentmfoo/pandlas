@@ -3,7 +3,7 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
-
+from socket import socket
 
 def timestamp2long(
     timestamp: Union[pd.Timestamp, pd.DatetimeIndex], start_date: pd.Timestamp = None
@@ -74,8 +74,15 @@ def long2timestamp(
     return pd.to_datetime(start_date + time_in_day)
 
 
-def is_port_in_use(port: int) -> bool:
-    import socket
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex(('localhost', port)) == 0
-    
+def is_port_in_use(port: int, ip='localhost') -> bool:
+    """Checks if the port is in use
+
+    Args:
+        port: port number
+        ip: ip
+
+    Returns:
+        True if the port is in use, else false.
+    """
+    with socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex((ip, port)) == 0

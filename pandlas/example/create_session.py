@@ -6,6 +6,7 @@ import logging
 import pandas as pd
 import numpy as np
 import pandlas.SqlRace as sr
+
 logging.basicConfig(level=logging.INFO)
 
 SQLITE_DB_DIR = r'c:\temp\pandlas\temp.ssndb'
@@ -27,7 +28,10 @@ df2 = pd.DataFrame()
 df2.index = pd.date_range(start, periods=100, freq='10S')
 df2.loc[:, "Param 2"] = np.sin(np.linspace(0, 10 * np.pi, num=100))
 df2.atlas.ParameterGroupIdentifier = "Sub group 1"
-df2.atlas.ApplicationGroupName = "App Group2"
+df2.atlas.ApplicationGroupName = "AppGroup2"
+df2.atlas.descriptions = {"Param 2:AppGroup2":"Custom Description"}
+df2.atlas.display_format = {"Param 2:AppGroup2":"%5.2f"}
+df2.atlas.units = {"Param 2:AppGroup2":"m/s"}
 
 session_identifier = "TestSession"
 with sr.SQLiteConnection(SQLITE_DB_DIR, session_identifier, mode='w') as session:

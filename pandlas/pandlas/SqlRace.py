@@ -7,7 +7,7 @@ import logging
 import numpy as np
 import tqdm
 import pandas as pd
-from pandlas.utils import is_port_in_use,long2timestamp
+from pandlas.utils import is_port_in_use, long2timestamp
 
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,13 @@ if not os.path.isfile(automation_client_dll_path):
 clr.AddReference(automation_client_dll_path)
 
 from MAT.OCS.Core import SessionKey
-from MESL.SqlRace.Domain import Core, SessionManager, FileSessionManager, SessionState, RecordersConfiguration
+from MESL.SqlRace.Domain import (
+    Core,
+    SessionManager,
+    FileSessionManager,
+    SessionState,
+    RecordersConfiguration,
+)
 from System import DateTime, Guid
 from System.Collections.Generic import List
 from System.Net import IPEndPoint, IPAddress
@@ -92,7 +98,12 @@ class SQLiteConnection(SessionConnection):
     """
 
     def __init__(
-            self, db_location, sessionIdentifier: str='', session_key: str = None, mode="r", recorder=False
+        self,
+        db_location,
+        sessionIdentifier: str = "",
+        session_key: str = None,
+        mode="r",
+        recorder=False,
     ):
         """Initializes a connection to a SQLite ATLAS session.
 
@@ -131,7 +142,9 @@ class SQLiteConnection(SessionConnection):
         self.sessionKey = SessionKey.NewKey()
         sessionDate = DateTime.Now
         event_type = "Session"
-        logger.debug("Creating new session with connection string %s.", self.connection_string)
+        logger.debug(
+            "Creating new session with connection string %s.", self.connection_string
+        )
         clientSession = self.sessionManager.CreateSession(
             self.connection_string,
             self.sessionKey,
@@ -143,8 +156,8 @@ class SQLiteConnection(SessionConnection):
         self.session = clientSession.Session
         logger.info("SQLite session created.")
 
-    def start_recorder(self, port = 7300):
-        """ Configures the SQL Server listener and recorder
+    def start_recorder(self, port=7300):
+        """Configures the SQL Server listener and recorder
 
         Args:
             port: Port number to open the Server Listener on.
@@ -157,16 +170,30 @@ class SQLiteConnection(SessionConnection):
         # Configure server listener
         Core.ConfigureServer(True, IPEndPoint(IPAddress.Parse("127.0.0.1"), port))
         recorderConfiguration = RecordersConfiguration.GetRecordersConfiguration()
-        recorderConfiguration.AddConfiguration(Guid.NewGuid(), "SQLite", self.db_location, self.db_location,
-                                               self.connection_string, False)
+        recorderConfiguration.AddConfiguration(
+            Guid.NewGuid(),
+            "SQLite",
+            self.db_location,
+            self.db_location,
+            self.connection_string,
+            False,
+        )
         if self.sessionManager.ServerListener.IsRunning:
-            logger.info("Server listener is running: %s.", self.sessionManager.ServerListener.IsRunning)
+            logger.info(
+                "Server listener is running: %s.",
+                self.sessionManager.ServerListener.IsRunning,
+            )
         else:
-            logger.warning("Server listener is running: %s.", self.sessionManager.ServerListener.IsRunning)
-        logger.debug("Configuring recorder with connection string %s.", self.connection_string)
+            logger.warning(
+                "Server listener is running: %s.",
+                self.sessionManager.ServerListener.IsRunning,
+            )
+        logger.debug(
+            "Configuring recorder with connection string %s.", self.connection_string
+        )
 
     def load_session(self, session_key: str = None):
-        """Load a historic session from the SQLite database
+        """Loads a historic session from the SQLite database
 
         Args:
             session_key: Optional, updates the sessionKey attribute and opens that session.
@@ -199,7 +226,7 @@ class Ssn2Session(SessionConnection):
         self.db_location = file_location
 
     def load_session(self):
-        """Load session from the SSN2 file."""
+        """Loads the session from the SSN2 file."""
         connectionString = f"DbEngine=SQLite;Data Source= {self.db_location}"
         stateList = List[SessionState]()
         stateList.Add(SessionState.Historical)
@@ -228,11 +255,18 @@ class SQLRaceDBConnection(SessionConnection):
 
     This connections can either be reading from an existing session (mode = 'r') or creating a new session (mode = 'w')
 
-    This Class supports the use of contex manager and will close the client session on exit.
+    This class supports the use of contex manager and will close the client session on exit.
 
     """
+
     def __init__(
-            self, data_source, database, sessionIdentifier: str='', session_key: str = None, mode="r", recorder=False
+        self,
+        data_source,
+        database,
+        sessionIdentifier: str = "",
+        session_key: str = None,
+        mode="r",
+        recorder=False,
     ):
         """Initializes a connection to a SQLite ATLAS session.
 
@@ -273,7 +307,9 @@ class SQLRaceDBConnection(SessionConnection):
         self.sessionKey = SessionKey.NewKey()
         sessionDate = DateTime.Now
         event_type = "Session"
-        logger.debug("Creating new session with connection string %s.", self.connection_string)
+        logger.debug(
+            "Creating new session with connection string %s.", self.connection_string
+        )
         clientSession = self.sessionManager.CreateSession(
             self.connection_string,
             self.sessionKey,
@@ -286,7 +322,7 @@ class SQLRaceDBConnection(SessionConnection):
         logger.info("SQLRace Database session created.")
 
     def start_recorder(self, port=7300):
-        """ Configures the SQL Server listener and recorder
+        """Configures the SQL Server listener and recorder
 
         Args:
             port: Port number to open the Server Listener on.
@@ -301,16 +337,30 @@ class SQLRaceDBConnection(SessionConnection):
 
         # Configure recorder
         recorderConfiguration = RecordersConfiguration.GetRecordersConfiguration()
-        recorderConfiguration.AddConfiguration(Guid.NewGuid(), "SQLServer", fr'{self.data_source}\{self.database}',
-                                               fr'{self.data_source}\{self.database}', self.connection_string, False)
+        recorderConfiguration.AddConfiguration(
+            Guid.NewGuid(),
+            "SQLServer",
+            rf"{self.data_source}\{self.database}",
+            rf"{self.data_source}\{self.database}",
+            self.connection_string,
+            False,
+        )
         if self.sessionManager.ServerListener.IsRunning:
-            logger.info("Server listener is running: %s.", self.sessionManager.ServerListener.IsRunning)
+            logger.info(
+                "Server listener is running: %s.",
+                self.sessionManager.ServerListener.IsRunning,
+            )
         else:
-            logger.warning("Server listener is running: %s.", self.sessionManager.ServerListener.IsRunning)
-        logger.debug("Configuring recorder with connection string %s.", self.connection_string)
+            logger.warning(
+                "Server listener is running: %s.",
+                self.sessionManager.ServerListener.IsRunning,
+            )
+        logger.debug(
+            "Configuring recorder with connection string %s.", self.connection_string
+        )
 
-    def load_session(self, session_key: str = None):
-        """Load a historic session from the SQLRace database
+    def load_session(self, session_key: str | None):
+        """Loads a historic session from the SQLRace database
 
         Args:
             session_key: Optional, updates the sessionKey attribute and opens that session.
@@ -334,9 +384,9 @@ class SQLRaceDBConnection(SessionConnection):
 
 
 def get_samples(
-        session, parameter: str, start_time: int = None, end_time: int = None
+    session, parameter: str, start_time: int = None, end_time: int = None
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Get all the samples for a parameter in the session
+    """Gets all the samples for a parameter in the session
 
     Args:
         session: MESL.SqlRace.Domain.Session object.
