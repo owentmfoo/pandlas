@@ -27,6 +27,11 @@ optional = true
 [tool.poetry.group.docs.dependencies]
 sphinx = "^7.2.6"
 
+
+[tool.poetry.group.dev.dependencies]
+pylint = "^3.1.0"
+black = "^24.2.0"
+
 [tool.pytest_env]
 PYTHONNET_RUNTIME="coreclr"
 PYTHONNET_CORECLR_RUNTIME_CONFIG="C:\\Program Files\\McLaren Applied Technologies\\ATLAS 10\\MAT.Atlas.Host.runtimeconfig.json"

@@ -1,8 +1,8 @@
 # pylint: disable=undefined-variable
 """Class file for SessionFrame
 
-SessionFrame is an extension of pandas DataFrame under the namespace 'atlas', and it has additional
-methods to interact with the ATLAS APIs through pythonnet.
+SessionFrame is an extension of pandas DataFrame under the namespace 'atlas', and it has
+additional methods to interact with the ATLAS APIs through pythonnet.
 
 ATLAS APIs are build on the .NET Core.
 
@@ -19,7 +19,7 @@ import os
 import random
 import warnings
 import struct
-from typing import Union, List
+from typing import Union
 import logging
 import numpy.typing as npt
 import numpy as np
@@ -30,14 +30,9 @@ from pandlas.utils import timestamp2long
 
 logger = logging.getLogger(__name__)
 
-# The path to the main SQL Race DLL. This is the default location when installed with Atlas 10
-SQL_RACE_DLL_PATH = (
-    r"C:\Program Files\McLaren Applied Technologies\ATLAS 10\MESL.SqlRace.Domain.dll"
-)
-SSN2SPLITER_DLL_PATH = (
-    r"C:\Program Files\McLaren Applied Technologies\ATLAS 10\MAT.SqlRace.Ssn2Splitter.dll"
-)
-
+A10_INSTALL_PATH = r"C:\Program Files\McLaren Applied Technologies\ATLAS 10"
+SQL_RACE_DLL_PATH = rf"{A10_INSTALL_PATH}\MESL.SqlRace.Domain.dll"
+SSN2SPLITER_DLL_PATH = rf"{A10_INSTALL_PATH}\MAT.SqlRace.Ssn2Splitter.dll"
 
 # Configure Pythonnet and reference the required assemblies for dotnet and SQL Race
 clr.AddReference("System.Collections")  # pylint: disable=no-member
@@ -46,26 +41,30 @@ clr.AddReference("System.IO")  # pylint: disable=no-member
 
 if not os.path.isfile(SQL_RACE_DLL_PATH):
     raise FileNotFoundError(
-        f"Couldn't find SQL Race DLL at {SQL_RACE_DLL_PATH} please check that Atlas 10 is "
-        f"installed."
+        f"Couldn't find SQL Race DLL at {SQL_RACE_DLL_PATH} please check that Atlas 10 "
+        f"is installed."
     )
 
 clr.AddReference(SQL_RACE_DLL_PATH)  # pylint: disable=no-member
 
 if not os.path.isfile(SSN2SPLITER_DLL_PATH):
-    raise Exception(
-        f"Couldn't find SSN2 Splitter DLL at {SSN2SPLITER_DLL_PATH}, please check that Atlas 10 is "
-        f"installed."
+    raise FileNotFoundError(
+        f"Couldn't find SSN2 Splitter DLL at {SSN2SPLITER_DLL_PATH}, please check that "
+        f"Atlas 10 is installed."
     )
 
 clr.AddReference(SSN2SPLITER_DLL_PATH)  # pylint: disable=no-member
 
-from System.Collections.Generic import List as NETList  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
+from System.Collections.Generic import (  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
+    List as NETList,
+)
 from System.Collections.ObjectModel import *  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
 from System import *  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
 
 from MAT.OCS.Core import *  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
-from MAT.SqlRace.Ssn2Splitter import Ssn2SessionExporter  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import,unused-import
+from MAT.SqlRace.Ssn2Splitter import (  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import,unused-import
+    Ssn2SessionExporter,
+)
 from MESL.SqlRace.Domain import *  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
 from MESL.SqlRace.Enumerators import *  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
 from MESL.SqlRace.Domain.Infrastructure.DataPipeline import *  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
@@ -82,38 +81,48 @@ class SessionFrame:
 
     def __init__(self, pandas_obj):
         self._obj = pandas_obj
-        self.ParameterGroupIdentifier = "SessionFrame"  # .NET objects, so pylint: disable=invalid-name
-        self.ApplicationGroupName = "MyApp"  # .NET objects, so pylint: disable=invalid-name
+        self.ParameterGroupIdentifier = (  # .NET objects, so pylint: disable=invalid-name
+            "SessionFrame"
+        )
+        self.ApplicationGroupName = (  # .NET objects, so pylint: disable=invalid-name
+            "MyApp"
+        )
         self.paramchannelID = {}  # .NET objects, so pylint: disable=invalid-name
-        self.units = {} # TODO: move to setter method and check for datatype
-        self.descriptions = {} # TODO: move to setter method and check for datatype
-        self.display_format = {} # TODO: move to setter method and check for datatype and format
+        self.units = {}  # TODO: move to setter method and check for datatype
+        self.descriptions = {}  # TODO: move to setter method and check for datatype
+        self.display_format = (
+            {}
+        )  # TODO: move to setter method and check for datatype and format
 
     def to_atlas_session(self, session: Session, show_progress_bar: bool = True):
         """Add the contents of the DataFrame to the ATLAS session.
 
-        The index of the DataFrame must be a DatetimeIndex, or else a AttributeError will be raised.
+        The index of the DataFrame must be a DatetimeIndex, or else a AttributeError
+        will be raised.
         All the data should be as float or can be converted to float.
-        A row channel will be created for each column and the parameter will be named using the
-        column name.
-        If there is a parameter with the same name and app group present in the session, it will
-        just add to that existing channel.
+        A row channel will be created for each column and the parameter will be named
+        using the column name.
+        If there is a parameter with the same name and app group present in the session,
+        it will just add to that existing channel.
 
-        When creating new parameters in the config, Pandlas will utilise df.atlas.unit attribute to
-        set the parameter unit. This should be provided in the form of a dictionary, where the keys
-        are the parameter identifiers and the values are the units, both in string.
+        When creating new parameters in the config, Pandlas will utilise df.atlas.unit
+        attribute to set the parameter unit. This should be provided in the form of a
+        dictionary, where the keys are the parameter identifiers and the values are the
+        units, both in string.
         If none have been provided, a default value of no unit "" will be set.
 
-        When creating new parameters in the config, Pandlas will utilise df.atlas.description
-        attribute to set the parameter description. This should be provided in the form of a
-        dictionary, where the keys are the parameter identifiers and the values are the units, both
-        in string.
-        If none have been provided, a default value of f"{parameter_name} description" will be set.
+        When creating new parameters in the config, Pandlas will utilise
+        df.atlas.description attribute to set the parameter description. This should be
+        provided in the form of a dictionary, where the keys are the parameter
+        identifiers and the values are the units, both in string.
+        If none have been provided, a default value of f"{parameter_name} description"
+        will be set.
 
-        When creating new parameters in the config, Pandlas will utilise df.atlas.display_format
-        attribute to set the parameter format override. This should be provided in the form of a
-        dictionary, where the keys are the parameter identifiers and the values are the units, both
-        in string. The format override must be in a valid form.
+        When creating new parameters in the config, Pandlas will utilise
+        df.atlas.display_format attribute to set the parameter format override. This
+        should be provided in the form of a dictionary, where the keys are the parameter
+         identifiers and the values are the units, both in string. The format override
+         must be in a valid form.
         If none have been provided, a default value of "%5.2f" will be set.
 
         Args:
@@ -131,11 +140,13 @@ class SessionFrame:
             try:
                 self._obj.index = pd.to_datetime(self._obj.index)
                 warnings.warn("parse success.")
-            except:
+            except pd.errors.ParserError:
                 warnings.warn("parse failed.")
 
         if not isinstance(self._obj.index, pd.DatetimeIndex):
-            raise AttributeError("DataFrame index is not pd.DatetimeIndex, unable to export to ssn2")
+            raise AttributeError(
+                "DataFrame index is not pd.DatetimeIndex, unable to export to ssn2"
+            )
 
         # remove rows that contain no data at all and sort by time.
         self._obj = self._obj.dropna(axis=1, how="all").sort_index()
@@ -146,7 +157,7 @@ class SessionFrame:
         timestamp64 = timestamp2long(timestamp)
         try:
             lap = self._obj.loc[timestamp].Lap
-        except:
+        except AttributeError:
             lap = 1
         newlap = Lap(int(timestamp64), int(lap), Byte(0), f"Lap {lap}", True)
         # TODO: what to do when you add to an existing session.
@@ -165,43 +176,65 @@ class SessionFrame:
             logger.debug("Creating new config.")
             config_identifier = f"{random.randint(0, 999999):05x}"  # .NET objects, so pylint: disable=invalid-name
             config_decription = "SessionFrame generated config"
-            configSetManager = ConfigurationSetManager.CreateConfigurationSetManager()  # .NET objects, so pylint: disable=invalid-name
+            configSetManager = (  # .NET objects, so pylint: disable=invalid-name
+                ConfigurationSetManager.CreateConfigurationSetManager()
+            )
             config = configSetManager.Create(
                 session.ConnectionString, config_identifier, config_decription
             )
 
             # Add param group
-            parameterGroupIdentifier = self.ParameterGroupIdentifier  # .NET objects, so pylint: disable=invalid-name
+            parameterGroupIdentifier = (  # .NET objects, so pylint: disable=invalid-name
+                self.ParameterGroupIdentifier
+            )
             group1 = ParameterGroup(parameterGroupIdentifier, parameterGroupIdentifier)
             config.AddParameterGroup(group1)
 
             # Add app group
-            applicationGroupName = self.ApplicationGroupName  # .NET objects, so pylint: disable=invalid-name
-            parameterGroupIds = NETList[String]()  # .NET objects, so pylint: disable=invalid-name
-            parameterGroupIds.Add(group1.Identifier)  # .NET objects, so pylint: disable=invalid-name
-            applicationGroup = ApplicationGroup(  # .NET objects, so pylint: disable=invalid-name
-                applicationGroupName, applicationGroupName, None, parameterGroupIds
+            applicationGroupName = (  # .NET objects, so pylint: disable=invalid-name
+                self.ApplicationGroupName
+            )
+            parameterGroupIds = NETList[  # .NET objects, so pylint: disable=invalid-name
+                String
+            ]()
+            parameterGroupIds.Add(  # .NET objects, so pylint: disable=invalid-name
+                group1.Identifier
+            )
+            applicationGroup = (  # .NET objects, so pylint: disable=invalid-name
+                ApplicationGroup(
+                    applicationGroupName, applicationGroupName, None, parameterGroupIds
+                )
             )
             applicationGroup.SupportsRda = False
             config.AddGroup(applicationGroup)
 
-            parameterGroupIdentifier = self.ParameterGroupIdentifier  # .NET objects, so pylint: disable=invalid-name
-            applicationGroupName = self.ApplicationGroupName  # .NET objects, so pylint: disable=invalid-name
+            parameterGroupIdentifier = (  # .NET objects, so pylint: disable=invalid-name
+                self.ParameterGroupIdentifier
+            )
+            applicationGroupName = (  # .NET objects, so pylint: disable=invalid-name
+                self.ApplicationGroupName
+            )
 
             # Create channel conversion function
             conversion_function_name = "Simple1To1"
             config.AddConversion(
-                RationalConversion.CreateSimple1To1Conversion(conversion_function_name, "", "%5.2f")
+                RationalConversion.CreateSimple1To1Conversion(
+                    conversion_function_name, "", "%5.2f"
+                )
             )
 
             # obtain the data
             for param_name in tqdm(
-                self._obj.columns, desc="Creating channels", disable=not show_progress_bar
+                self._obj.columns,
+                desc="Creating channels",
+                disable=not show_progress_bar,
             ):
                 param_identifier = f"{param_name}:{self.ApplicationGroupName}"
                 # if parameter exists already, then do not create a new parameter
                 if session.ContainsParameter(param_identifier):
-                    logger.debug("Parameter identifier already exists: %s.", {param_identifier})
+                    logger.debug(
+                        "Parameter identifier already exists: %s.", {param_identifier}
+                    )
                     continue
 
                 data = self._obj.loc[:, param_name].dropna().to_numpy()
@@ -211,9 +244,11 @@ class SessionFrame:
                 warnmin = dispmin
 
                 # Add param channel
-                myParamChannelId = session.ReserveNextAvailableRowChannelId() % 2147483647  # .NET objects, so pylint: disable=invalid-name
-                # TODO: this is a stupid workaround because it takes UInt32 but it cast it to Int32
-                #  internally...
+                myParamChannelId = ( # .NET objects, so pylint: disable=invalid-name
+                    session.ReserveNextAvailableRowChannelId() % 2147483647
+                )
+                # TODO: this is a stupid workaround because it takes UInt32 but it cast
+                #  it to Int32 internally...
                 self._add_channel(config, myParamChannelId, param_name)
 
                 #  Add param
@@ -231,8 +266,10 @@ class SessionFrame:
 
             try:
                 config.Commit()
-            except:
-                logging.warning("Cannot commit config %s, config already exist.", config.Identifier)
+            except ConfigurationSetAlreadyExistsException:
+                logging.warning(
+                    "Cannot commit config %s, config already exist.", config.Identifier
+                )
             session.UseLoggingConfigurationSet(config.Identifier)
 
         # Obtain the channel Id for the existing parameters
@@ -243,7 +280,9 @@ class SessionFrame:
             param_identifier = f"{param_name}:{self.ApplicationGroupName}"
             parameter = session.GetParameter(param_identifier)
             if parameter.Channels.Count != 1:
-                logger.warning("Parameter %s contains more than 1 channel.", param_identifier)
+                logger.warning(
+                    "Parameter %s contains more than 1 channel.", param_identifier
+                )
             self.paramchannelID[param_name] = parameter.Channels[0].Id
 
         # write it to the session
@@ -253,11 +292,15 @@ class SessionFrame:
             series = self._obj.loc[:, param_name].dropna()
             timestamps = series.index
             data = series.to_numpy()
-            myParamChannelId = self.paramchannelID[param_name]  # .NET objects, so pylint: disable=invalid-name
+            myParamChannelId = self.paramchannelID[  # .NET objects, so pylint: disable=invalid-name
+                param_name
+            ]
             self.add_data(session, myParamChannelId, data, timestamps)
 
         logging.debug(
-            "Data for %s:%s added.", self.ParameterGroupIdentifier, self.ApplicationGroupName
+            "Data for %s:%s added.",
+            self.ParameterGroupIdentifier,
+            self.ApplicationGroupName,
         )
 
     def _add_param(
@@ -287,13 +330,19 @@ class SessionFrame:
 
         """
         # TODO: guard again NaNs
-        myParamChannelId = NETList[UInt32]()  # .NET objects, so pylint: disable=invalid-name
+        myParamChannelId = NETList[  # .NET objects, so pylint: disable=invalid-name
+            UInt32
+        ]()
         myParamChannelId.Add(self.paramchannelID[parameter_name])
         parameterIdentifier = f"{parameter_name}:{ApplicationGroupName}"  # .NET objects, so pylint: disable=invalid-name
-        parameterGroupIdentifiers = NETList[String]()  # .NET objects, so pylint: disable=invalid-name
+        parameterGroupIdentifiers = NETList[  # .NET objects, so pylint: disable=invalid-name
+            String
+        ]()
         parameterGroupIdentifiers.Add(ParameterGroupIdentifier)
 
-        param_description = self.descriptions.get(parameterIdentifier, f"{parameter_name} description")
+        param_description = self.descriptions.get(
+            parameterIdentifier, f"{parameter_name} description"
+        )
         param_format = self.display_format.get(parameterIdentifier, "%5.2f")
         param_unit = self.units.get(parameterIdentifier, "")
 
@@ -313,11 +362,13 @@ class SessionFrame:
             myParamChannelId,
             ApplicationGroupName,
             param_format,
-            param_unit
+            param_unit,
         )
         config.AddParameter(myParameter)
 
-    def _add_channel(self, config: ConfigurationSet, channel_id: int, parameter_name: str):
+    def _add_channel(
+        self, config: ConfigurationSet, channel_id: int, parameter_name: str
+    ):
         """Adds a row channel to the config.
 
         Args:
@@ -353,7 +404,8 @@ class SessionFrame:
         # TODO: add in guard against invalid datatypes
         if not isinstance(timestamps, (pd.DatetimeIndex, npt.NDArray[np.datetime64])):
             raise TypeError(
-                "timestamps should be pd.DateTimeIndex, or numpy array of np.datetime64."
+                "timestamps should be pd.DateTimeIndex, "
+                "or numpy array of np.datetime64."
             )
         timestamps = timestamp2long(timestamps)
 
