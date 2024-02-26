@@ -10,7 +10,7 @@ This package utilises API from ATLAS and as such requires a valid ATLAS licence 
 
 ## Installtion
 ```
-pip install "git+https://github.com/owentmfoo/pandlas.git#egg=pandlas&subdirectory=pandlas"
+pip install "git+https://github.com/owentmfoo/pandlas.git"
 ```
 
 ## Package dependencies
