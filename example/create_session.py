@@ -6,6 +6,7 @@ import logging
 import pandas as pd
 import numpy as np
 import pandlas.SqlRace as sr
+import session_frame
 
 logging.basicConfig(level=logging.INFO)
 

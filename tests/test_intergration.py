@@ -1,10 +1,10 @@
-
 """Integration / Full system test going all the way from Pandlas to ATLAS"""
 import pytest
 import pandlas.SqlRace as sr
 import numpy as np
 import pandas as pd
 from pandlas.utils import timestamp2long
+import pandlas.session_frame
 
 
 @pytest.mark.atlaslicensed()
@@ -34,7 +34,7 @@ def test_read_write_sqldb(tmp_path):
     """Write to SQLite and then read the session back."""
     SQLITE_DB_DIR = rf'{tmp_path}\temp.ssndb'
     session_identifier = "TestSession"
-    data_source = r'M802072\LOCAL'
+    data_source = r'MCLA-5JRZTQ3\LOCAL'
     database = 'SQLRACE01'
     start = np.datetime64("now")
 

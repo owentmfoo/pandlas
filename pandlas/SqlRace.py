@@ -5,10 +5,7 @@ from abc import ABC, abstractmethod
 import clr
 import logging
 import numpy as np
-import tqdm
-import pandas as pd
-from pandlas.utils import is_port_in_use, long2timestamp
-
+from pandlas.utils import is_port_in_use
 
 logger = logging.getLogger(__name__)
 # The path to the main SQL Race DLL. This is the default location when installed with Atlas 10
@@ -49,7 +46,6 @@ from MAT.OCS.Core import SessionKey
 from MESL.SqlRace.Domain import (
     Core,
     SessionManager,
-    FileSessionManager,
     SessionState,
     RecordersConfiguration,
 )
