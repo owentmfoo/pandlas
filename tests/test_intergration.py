@@ -32,7 +32,6 @@ def test_read_write_sqlite(tmp_path):
 @pytest.mark.atlaslicensed()
 def test_read_write_sqldb(tmp_path):
     """Write to SQLite and then read the session back."""
-    SQLITE_DB_DIR = rf'{tmp_path}\temp.ssndb'
     session_identifier = "TestSession"
     data_source = r'MCLA-5JRZTQ3\LOCAL'
     database = 'SQLRACE01'
