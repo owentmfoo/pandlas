@@ -1,4 +1,5 @@
 """Pythonized version of common SQLRace calls"""
+
 import os
 from abc import ABC, abstractmethod
 
@@ -8,50 +9,34 @@ import numpy as np
 from pandlas.utils import is_port_in_use
 
 logger = logging.getLogger(__name__)
-# The path to the main SQL Race DLL. This is the default location when installed with Atlas 10
-sql_race_dll_path = (
-    r"C:\Program Files\McLaren Applied Technologies\ATLAS 10\MESL.SqlRace.Domain.dll"
-)
-ssn2splitter_dll_path = r"C:\Program Files\McLaren Applied Technologies\ATLAS 10\MAT.SqlRace.Ssn2Splitter.dll"
-# The paths to Automation API DLL files.
-automation_api_dll_path = r"C:\Program Files\McLaren Applied Technologies\ATLAS 10\MAT.Atlas.Automation.Api.dll"
-automation_client_dll_path = r"C:\Program Files\McLaren Applied Technologies\ATLAS 10\MAT.Atlas.Automation.Client.dll"
+
+A10_INSTALL_PATH = r"C:\Program Files\McLaren Applied Technologies\ATLAS 10"
+SQL_RACE_DLL_PATH = rf"{A10_INSTALL_PATH}\MESL.SqlRace.Domain.dll"
 
 # Configure Pythonnet and reference the required assemblies for dotnet and SQL Race
-clr.AddReference("System.Collections")
-clr.AddReference("System.Core")
-clr.AddReference("System.IO")
+clr.AddReference("System.Collections")  # pylint: disable=no-member
+clr.AddReference("System.Core")  # pylint: disable=no-member
+clr.AddReference("System.IO")  # pylint: disable=no-member
 
-if not os.path.isfile(sql_race_dll_path):
-    raise Exception(
+if not os.path.isfile(SQL_RACE_DLL_PATH):
+    raise FileNotFoundError(
         "Couldn't find SQL Race DLL at "
-        + sql_race_dll_path
+        + SQL_RACE_DLL_PATH
         + " please check that Atlas 10 is installed"
     )
 
-clr.AddReference(sql_race_dll_path)
+clr.AddReference(SQL_RACE_DLL_PATH)
 
-if not os.path.isfile(automation_api_dll_path):
-    raise Exception(f"Couldn't find Automation API DLL at {automation_api_dll_path}.")
-
-clr.AddReference(automation_api_dll_path)
-
-if not os.path.isfile(automation_client_dll_path):
-    raise Exception(
-        f"Couldn't find Automation Client DLL at {automation_client_dll_path}."
-    )
-clr.AddReference(automation_client_dll_path)
-
-from MAT.OCS.Core import SessionKey
-from MESL.SqlRace.Domain import (
+from MAT.OCS.Core import SessionKey  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
+from MESL.SqlRace.Domain import (  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
     Core,
     SessionManager,
     SessionState,
     RecordersConfiguration,
 )
-from System import DateTime, Guid
-from System.Collections.Generic import List
-from System.Net import IPEndPoint, IPAddress
+from System import DateTime, Guid  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
+from System.Collections.Generic import List  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
+from System.Net import IPEndPoint, IPAddress  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
 
 
 def initialise_sqlrace():
@@ -67,7 +52,7 @@ class SessionConnection(ABC):
     """Abstract class that represents a session connection"""
 
     initialise_sqlrace()
-    sessionManager = SessionManager.CreateSessionManager()
+    sessionManager = SessionManager.CreateSessionManager()  # .NET objects, so pylint: disable=invalid-name
 
     @abstractmethod
     def __init__(self):
@@ -87,16 +72,18 @@ class SessionConnection(ABC):
 class SQLiteConnection(SessionConnection):
     """Represents a connection to a ATLAS session in a SQLite database
 
-    This connections can either be reading from an existing session (mode = 'r') or creating a new session (mode = 'w')
+    This connections can either be reading from an existing session (mode = 'r') or
+    creating a new session (mode = 'w')
 
-    This Class supports the use of contex manager and will close the client session on exit.
+    This Class supports the use of contex manager and will close the client session on
+    exit.
 
     """
 
     def __init__(
         self,
         db_location,
-        sessionIdentifier: str = "",
+        session_identifier: str = "",
         session_key: str = None,
         mode="r",
         recorder=False,
@@ -105,21 +92,23 @@ class SQLiteConnection(SessionConnection):
 
         Args:
             db_location: Location of SQLite database to connect to.
-            sessionIdentifier: Name of the session identifier.
-            session_key: Session key of the session, leave it as None if creating a new session
+            session_identifier: Name of the session identifier.
+            session_key: Session key of the session, leave it as None if creating a new
+                session
             mode: read 'r' or  write 'w'.
-            recorder: Only applies in write mode, set to Ture to configure the  SQLRace Server Listener and  Recorder,
-            so it can be viewed as a live session in ATLAS.
+            recorder: Only applies in write mode, set to Ture to configure the SQLRace
+                Server Listener and  Recorder, so it can be viewed as a live session in
+                ATLAS.
         """
         self.client = None
         self.session = None
         self.db_location = db_location
-        self.sessionIdentifier = sessionIdentifier
+        self.session_identifier = session_identifier
         self.mode = mode
         self.recorder = recorder
 
-        if not (session_key is None):
-            self.sessionKey = SessionKey.Parse(session_key)
+        if session_key is not None:
+            self.sessionKey = SessionKey.Parse(session_key)  # .NET objects, so pylint: disable=invalid-name
         else:
             self.sessionKey = None
 
@@ -136,15 +125,15 @@ class SQLiteConnection(SessionConnection):
         if self.recorder:
             self.start_recorder()
         self.sessionKey = SessionKey.NewKey()
-        sessionDate = DateTime.Now
+        sessionDate = DateTime.Now  # .NET objects, so pylint: disable=invalid-name
         event_type = "Session"
         logger.debug(
             "Creating new session with connection string %s.", self.connection_string
         )
-        clientSession = self.sessionManager.CreateSession(
+        clientSession = self.sessionManager.CreateSession(  # .NET objects, so pylint: disable=invalid-name
             self.connection_string,
             self.sessionKey,
-            self.sessionIdentifier,
+            self.session_identifier,
             sessionDate,
             event_type,
         )
@@ -165,7 +154,7 @@ class SQLiteConnection(SessionConnection):
         logger.info("Opening server lister on port %d.", port)
         # Configure server listener
         Core.ConfigureServer(True, IPEndPoint(IPAddress.Parse("127.0.0.1"), port))
-        recorderConfiguration = RecordersConfiguration.GetRecordersConfiguration()
+        recorderConfiguration = RecordersConfiguration.GetRecordersConfiguration()  # .NET objects, so pylint: disable=invalid-name
         recorderConfiguration.AddConfiguration(
             Guid.NewGuid(),
             "SQLite",
@@ -192,7 +181,8 @@ class SQLiteConnection(SessionConnection):
         """Loads a historic session from the SQLite database
 
         Args:
-            session_key: Optional, updates the sessionKey attribute and opens that session.
+            session_key: Optional, updates the sessionKey attribute and opens that
+                session.
 
         Returns:
             None, session is opened and can be accessed from the attribute self.session.
@@ -216,27 +206,27 @@ class Ssn2Session(SessionConnection):
     """Represents a session connection to a SSN2 file."""
 
     def __init__(self, file_location):
-        self.sessionKey = None
+        self.sessionKey = None  # .NET objects, so pylint: disable=invalid-name
         self.client = None
         self.session = None
         self.db_location = file_location
 
     def load_session(self):
         """Loads the session from the SSN2 file."""
-        connectionString = f"DbEngine=SQLite;Data Source= {self.db_location}"
-        stateList = List[SessionState]()
+        connection_string = f"DbEngine=SQLite;Data Source= {self.db_location}"
+        stateList = List[SessionState]()  # .NET objects, so pylint: disable=invalid-name
         stateList.Add(SessionState.Historical)
 
         # Summary
-        summary = self.sessionManager.Find(connectionString, 1, stateList, False)
+        summary = self.sessionManager.Find(connection_string, 1, stateList, False)
         if summary.Count != 1:
             logger.warning(
-                "SSN2 contains more than 1 session. Loading session %s. Consider using "
-                "'SQLiteConnection' instead and specify the session key.",
+                "SSN2 contains more than 1 session. Loading session %s. Consider "
+                "using 'SQLiteConnection' instead and specify the session key.",
                 summary.get_Item(0).Identifier,
             )
         self.sessionKey = summary.get_Item(0).Key
-        self.client = self.sessionManager.Load(self.sessionKey, connectionString)
+        self.client = self.sessionManager.Load(self.sessionKey, connection_string)
         self.session = self.client.Session
 
         logger.info("SSN2 session loaded.")
@@ -249,9 +239,11 @@ class Ssn2Session(SessionConnection):
 class SQLRaceDBConnection(SessionConnection):
     """Represents a connection to a ATLAS session in a SQLRace database
 
-    This connections can either be reading from an existing session (mode = 'r') or creating a new session (mode = 'w')
+    This connections can either be reading from an existing session (mode = 'r') or
+    creating a new session (mode = 'w')
 
-    This class supports the use of contex manager and will close the client session on exit.
+    This class supports the use of contex manager and will close the client session on
+    exit.
 
     """
 
@@ -259,7 +251,7 @@ class SQLRaceDBConnection(SessionConnection):
         self,
         data_source,
         database,
-        sessionIdentifier: str = "",
+        session_identifier: str = "",
         session_key: str = None,
         mode="r",
         recorder=False,
@@ -267,24 +259,27 @@ class SQLRaceDBConnection(SessionConnection):
         """Initializes a connection to a SQLite ATLAS session.
 
         Args:
-            data_source: Name or network address of the instance of SQL Server to connect to.
+            data_source: Name or network address of the instance of SQL Server to
+                connect to.
             database: Name of the database
-            sessionIdentifier: Name of the session identifier.
-            session_key: Session key of the session, leave it as None if creating a new session.
+            session_identifier: Name of the session identifier.
+            session_key: Session key of the session, leave it as None if creating a new
+                session.
             mode: read 'r' or  write 'w'.
-            recorder: Only applies in write mode, set to Ture to configure the  SQLRace Server Listener and  Recorder,
-            so it can be viewed as a live session in ATLAS.
+            recorder: Only applies in write mode, set to Ture to configure the  SQLRace
+                Server Listener and  Recorder, so it can be viewed as a live session in
+                ATLAS.
         """
         self.client = None
         self.session = None
         self.data_source = data_source
         self.database = database
-        self.sessionIdentifier = sessionIdentifier
+        self.session_identifier = session_identifier
         self.mode = mode
         self.recorder = recorder
 
-        if not (session_key is None):
-            self.sessionKey = SessionKey.Parse(session_key)
+        if session_key is not None:
+            self.sessionKey = SessionKey.Parse(session_key)  # .NET objects, so pylint: disable=invalid-name
         else:
             self.sessionKey = None
 
@@ -295,21 +290,24 @@ class SQLRaceDBConnection(SessionConnection):
 
     @property
     def connection_string(self):
-        return f"server={self.data_source};Initial Catalog={self.database};Trusted_Connection=True;"
+        return (
+            f"server={self.data_source};Initial Catalog={self.database};"
+            f"Trusted_Connection=True;"
+        )
 
     def create_sqlrace(self):
         if self.recorder:
             self.start_recorder()
         self.sessionKey = SessionKey.NewKey()
-        sessionDate = DateTime.Now
+        sessionDate = DateTime.Now  # .NET objects, so pylint: disable=invalid-name
         event_type = "Session"
         logger.debug(
             "Creating new session with connection string %s.", self.connection_string
         )
-        clientSession = self.sessionManager.CreateSession(
+        clientSession = self.sessionManager.CreateSession(  # .NET objects, so pylint: disable=invalid-name
             self.connection_string,
             self.sessionKey,
-            self.sessionIdentifier,
+            self.session_identifier,
             sessionDate,
             event_type,
         )
@@ -332,7 +330,7 @@ class SQLRaceDBConnection(SessionConnection):
         Core.ConfigureServer(True, IPEndPoint(IPAddress.Parse("127.0.0.1"), port))
 
         # Configure recorder
-        recorderConfiguration = RecordersConfiguration.GetRecordersConfiguration()
+        recorderConfiguration = RecordersConfiguration.GetRecordersConfiguration()  # .NET objects, so pylint: disable=invalid-name
         recorderConfiguration.AddConfiguration(
             Guid.NewGuid(),
             "SQLServer",
@@ -359,7 +357,8 @@ class SQLRaceDBConnection(SessionConnection):
         """Loads a historic session from the SQLRace database
 
         Args:
-            session_key: Optional, updates the sessionKey attribute and opens that session.
+            session_key: Optional, updates the sessionKey attribute and opens that
+                session.
 
         Returns:
             session is opened and can be accessed from the attribute self.session.
@@ -399,5 +398,5 @@ def get_samples(
         end_time = session.EndTime
     pda = session.CreateParameterDataAccess(parameter)
     sample_count = pda.GetSamplesCount(start_time, end_time)
-    ParameterValues = pda.GetSamplesBetween(start_time, end_time, sample_count)
+    ParameterValues = pda.GetSamplesBetween(start_time, end_time, sample_count)  # .NET objects, so pylint: disable=invalid-name
     return np.array(ParameterValues.Data), np.array(ParameterValues.Timestamp)

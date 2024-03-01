@@ -1,9 +1,9 @@
+"""Collection of utility scripts"""
 import logging
 from typing import Union
-
 import numpy as np
 import pandas as pd
-from socket import socket
+import socket
 
 def timestamp2long(
     timestamp: Union[pd.Timestamp, pd.DatetimeIndex], start_date: pd.Timestamp = None
@@ -12,8 +12,9 @@ def timestamp2long(
 
     Args:
         timestamp: List of timestamps to be converted.
-        start_date: The date to count from. If no date is passed in then it will take the start of the timestamp as the
-        first day. The timestamp will be rounded down to the nearest day and the ns outputted will be counted from midnight.
+        start_date: The date to count from. If no date is passed in then it will take
+            the start of the timestamp as the first day. The timestamp will be rounded
+            down to the nearest day and the ns outputted will be counted from midnight.
 
     Returns:
         Array of int64 representing ns passed since midnight of start date.
@@ -74,7 +75,7 @@ def long2timestamp(
     return pd.to_datetime(start_date + time_in_day)
 
 
-def is_port_in_use(port: int, ip='localhost') -> bool:
+def is_port_in_use(port: int, ip="localhost") -> bool:
     """Checks if the port is in use
 
     Args:
@@ -84,5 +85,5 @@ def is_port_in_use(port: int, ip='localhost') -> bool:
     Returns:
         True if the port is in use, else false.
     """
-    with socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex((ip, port)) == 0
