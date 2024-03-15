@@ -26,6 +26,7 @@ import numpy as np
 import pandas as pd
 import clr
 from tqdm import tqdm
+from pqdm.processes import pqdm
 from pandlas.utils import timestamp2long
 
 logger = logging.getLogger(__name__)
@@ -286,22 +287,23 @@ class SessionFrame:
             self.paramchannelID[param_name] = parameter.Channels[0].Id
 
         # write it to the session
-        for param_name in tqdm(
-            self._obj.columns, desc="Adding data", disable=not show_progress_bar
-        ):
-            series = self._obj.loc[:, param_name].dropna()
-            timestamps = series.index
-            data = series.to_numpy()
-            myParamChannelId = self.paramchannelID[  # .NET objects, so pylint: disable=invalid-name
-                param_name
-            ]
-            self.add_data(session, myParamChannelId, data, timestamps)
+        input_args = [[i, session] for i in self._obj.columns]
+        pqdm(input_args, self.__add_data_for_param, n_jobs=10, desc="Adding data", disable=not show_progress_bar)
 
         logging.debug(
             "Data for %s:%s added.",
             self.ParameterGroupIdentifier,
             self.ApplicationGroupName,
         )
+
+    def __add_data_for_param(self, param_name, session):
+        series = self._obj.loc[:, param_name].dropna()
+        timestamps = series.index
+        data = series.to_numpy()
+        myParamChannelId = self.paramchannelID[  # .NET objects, so pylint: disable=invalid-name
+            param_name
+        ]
+        self.add_row_data(session, myParamChannelId, data, timestamps)
 
     def _add_param(
         self,
@@ -386,7 +388,7 @@ class SessionFrame:
         )
         config.AddChannel(myParameterChannel)
 
-    def add_data(
+    def add_row_data(
         self,
         session: Session,
         channel_id: float,
