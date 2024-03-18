@@ -19,6 +19,7 @@ import os
 import random
 import warnings
 import struct
+from concurrent.futures import wait, ThreadPoolExecutor
 from typing import Union
 import logging
 import numpy.typing as npt
@@ -26,7 +27,6 @@ import numpy as np
 import pandas as pd
 import clr
 from tqdm import tqdm
-from pqdm.processes import pqdm
 from pandlas.utils import timestamp2long
 
 logger = logging.getLogger(__name__)
@@ -287,8 +287,17 @@ class SessionFrame:
             self.paramchannelID[param_name] = parameter.Channels[0].Id
 
         # write it to the session
-        input_args = [[i, session] for i in self._obj.columns]
-        pqdm(input_args, self.__add_data_for_param, n_jobs=10, desc="Adding data", disable=not show_progress_bar)
+        # TODO: make a separate version of to_atlas to specify workers
+        # with tqdm(total=self._obj.shape[1], desc="Adding data", disable=not show_progress_bar) as pbar:
+        #     for i in self._obj.columns:
+        #         self.__add_data_for_param(i,session,pbar)
+
+        with tqdm(total=self._obj.shape[1], desc="Adding data", disable=not show_progress_bar) as pbar:
+            with ThreadPoolExecutor(max_workers=20) as executor:
+                input_args = [[i, session, pbar] for i in self._obj.columns]
+                future_tasks = [executor.submit(self.__add_data_for_param, *args) for args in input_args]
+                wait(future_tasks)
+                print("taskDone")
 
         logging.debug(
             "Data for %s:%s added.",
@@ -296,7 +305,7 @@ class SessionFrame:
             self.ApplicationGroupName,
         )
 
-    def __add_data_for_param(self, param_name, session):
+    def __add_data_for_param(self, param_name, session, progress_bar=None):
         series = self._obj.loc[:, param_name].dropna()
         timestamps = series.index
         data = series.to_numpy()
@@ -304,6 +313,8 @@ class SessionFrame:
             param_name
         ]
         self.add_row_data(session, myParamChannelId, data, timestamps)
+        if progress_bar is not None:
+            progress_bar.update(1)
 
     def _add_param(
         self,
@@ -369,7 +380,7 @@ class SessionFrame:
         config.AddParameter(myParameter)
 
     def _add_channel(
-        self, config: ConfigurationSet, channel_id: int, parameter_name: str
+            self, config: ConfigurationSet, channel_id: int, parameter_name: str
     ):
         """Adds a row channel to the config.
 
@@ -389,11 +400,11 @@ class SessionFrame:
         config.AddChannel(myParameterChannel)
 
     def add_row_data(
-        self,
-        session: Session,
-        channel_id: float,
-        data: np.ndarray,
-        timestamps: Union[pd.DatetimeIndex, npt.NDArray[np.datetime64]],
+            self,
+            session: Session,
+            channel_id: float,
+            data: np.ndarray,
+            timestamps: Union[pd.DatetimeIndex, npt.NDArray[np.datetime64]],
     ):
         """Adds data to a channel.
 
@@ -418,7 +429,7 @@ class SessionFrame:
         databytes = bytearray(len(data) * 4)
         for i, value in enumerate(data):
             new_bytes = struct.pack("f", value)
-            databytes[i * 4 : i * 4 + len(new_bytes)] = new_bytes
+            databytes[i * 4: i * 4 + len(new_bytes)] = new_bytes
 
         timestamps_array = Array[Int64](len(timestamps))
         for i, timestamp in enumerate(timestamps):
