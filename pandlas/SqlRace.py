@@ -34,8 +34,10 @@ from MESL.SqlRace.Domain import (  # .NET imports, so pylint: disable=wrong-impo
     SessionManager,
     SessionState,
     RecordersConfiguration,
+    Session,
+    Lap,
 )
-from System import DateTime, Guid  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
+from System import DateTime, Guid, Byte  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
 from System.Collections.Generic import List  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
 from System.Net import IPEndPoint, IPAddress  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
 
@@ -408,6 +410,7 @@ def add_lap(
     timestamp: pd.Timestamp,
     lap_number: int = None,
     lap_name: str = None,
+    count_for_fastest_lap: bool = True,
 ) -> None:
     """Add a new lap to the session.
 
@@ -416,6 +419,7 @@ def add_lap(
         timestamp: Timestamp to add the lap.
         lap_number: Lap number.
         lap_name: Lap name.
+        count_for_fastest_lap:
 
     Returns:
         None
@@ -428,6 +432,6 @@ def add_lap(
         lap_name = f"Lap {lap_number}"
         logger.debug("No lap name provided, set lap name as %s", lap_name)
 
-    newlap = Lap(timestamp2long(timestamp), lap_number, Byte(0), lap_name, True)
+    newlap = Lap(int(timestamp2long(timestamp)), lap_number, Byte(0), lap_name, count_for_fastest_lap)
     session.LapCollection.Add(newlap)
     logger.info('"%s" number %i added at %s', lap_name, lap_number, timestamp)
