@@ -203,6 +203,217 @@ class SessionFrame:
             )
             applicationGroup = (  # .NET objects, so pylint: disable=invalid-name
                 ApplicationGroup(
+                    applicationGroupName, applicationGroupName, parameterGroupIds
+                )
+            )
+            # applicationGroup.SupportsRda = False
+            config.AddGroup(applicationGroup)
+
+            parameterGroupIdentifier = (  # .NET objects, so pylint: disable=invalid-name
+                self.ParameterGroupIdentifier
+            )
+            applicationGroupName = (  # .NET objects, so pylint: disable=invalid-name
+                self.ApplicationGroupName
+            )
+
+            # Create channel conversion function
+            conversion_function_name = "Simple1To1"
+            config.AddConversion(
+                RationalConversion.CreateSimple1To1Conversion(
+                    conversion_function_name, "", "%5.2f"
+                )
+            )
+
+            # obtain the data
+            for param_name in tqdm(
+                self._obj.columns,
+                desc="Creating channels",
+                disable=not show_progress_bar,
+            ):
+                param_identifier = f"{param_name}:{self.ApplicationGroupName}"
+                # if parameter exists already, then do not create a new parameter
+                if session.ContainsParameter(param_identifier):
+                    logger.debug(
+                        "Parameter identifier already exists: %s.", {param_identifier}
+                    )
+                    continue
+
+                data = self._obj.loc[:, param_name].dropna().to_numpy()
+                dispmax = data.max()
+                dispmin = data.min()
+                warnmax = dispmax
+                warnmin = dispmin
+
+                # Add param channel
+                myParamChannelId = ( # .NET objects, so pylint: disable=invalid-name
+                    session.ReserveNextAvailableRowChannelId() % 2147483647
+                )
+                # TODO: this is a stupid workaround because it takes UInt32 but it cast
+                #  it to Int32 internally...
+                self._add_channel(config, myParamChannelId, param_name)
+
+                #  Add param
+                self._add_param(
+                    config,
+                    applicationGroupName,
+                    conversion_function_name,
+                    parameterGroupIdentifier,
+                    dispmax,
+                    dispmin,
+                    param_name,
+                    warnmax,
+                    warnmin,
+                )
+
+            try:
+                config.Commit()
+            except ConfigurationSetAlreadyExistsException:
+                logging.warning(
+                    "Cannot commit config %s, config already exist.", config.Identifier
+                )
+            session.UseLoggingConfigurationSet(config.Identifier)
+
+        # Obtain the channel Id for the existing parameters
+        for param_name in self._obj.columns:
+            param_identifier = f"{param_name}:{self.ApplicationGroupName}"
+            if not session.ContainsParameter(param_identifier):
+                continue
+            param_identifier = f"{param_name}:{self.ApplicationGroupName}"
+            parameter = session.GetParameter(param_identifier)
+            if parameter.Channels.Count != 1:
+                logger.warning(
+                    "Parameter %s contains more than 1 channel.", param_identifier
+                )
+            self.paramchannelID[param_name] = parameter.Channels[0].Id
+
+        # write it to the session
+        for param_name in tqdm(
+            self._obj.columns, desc="Adding data", disable=not show_progress_bar
+        ):
+            series = self._obj.loc[:, param_name].dropna()
+            timestamps = series.index
+            data = series.to_numpy()
+            myParamChannelId = self.paramchannelID[  # .NET objects, so pylint: disable=invalid-name
+                param_name
+            ]
+            self.add_row_data(session, myParamChannelId, data, timestamps)
+
+        logging.debug(
+            "Data for %s:%s added.",
+            self.ParameterGroupIdentifier,
+            self.ApplicationGroupName,
+        )
+
+    def to_atlas_session_par(self, session: Session, show_progress_bar: bool = True):
+        """Add the contents of the DataFrame to the ATLAS session in parallel.
+
+        TODO: add docstring, add kwarg to specify number of workers
+
+        The index of the DataFrame must be a DatetimeIndex, or else a AttributeError
+        will be raised.
+        All the data should be as float or can be converted to float.
+        A row channel will be created for each column and the parameter will be named
+        using the column name.
+        If there is a parameter with the same name and app group present in the session,
+        it will just add to that existing channel.
+
+        When creating new parameters in the config, Pandlas will utilise df.atlas.unit
+        attribute to set the parameter unit. This should be provided in the form of a
+        dictionary, where the keys are the parameter identifiers and the values are the
+        units, both in string.
+        If none have been provided, a default value of no unit "" will be set.
+
+        When creating new parameters in the config, Pandlas will utilise
+        df.atlas.description attribute to set the parameter description. This should be
+        provided in the form of a dictionary, where the keys are the parameter
+        identifiers and the values are the units, both in string.
+        If none have been provided, a default value of f"{parameter_name} description"
+        will be set.
+
+        When creating new parameters in the config, Pandlas will utilise
+        df.atlas.display_format attribute to set the parameter format override. This
+        should be provided in the form of a dictionary, where the keys are the parameter
+         identifiers and the values are the units, both in string. The format override
+         must be in a valid form.
+        If none have been provided, a default value of "%5.2f" will be set.
+
+        Args:
+            session: MESL.SqlRace.Domain.Session to the data to.
+            show_progress_bar: Show progress bar when creating config and adding data.
+        Raises:
+             AttributeError: The index is not a pd.DatetimeIndex.
+        """
+
+        if not isinstance(self._obj.index, pd.DatetimeIndex):
+            warnings.warn(
+                "DataFrame index is not pd.DatetimeIndex, attempting to parse index to "
+                "DatetimeIndex."
+            )
+            try:
+                self._obj.index = pd.to_datetime(self._obj.index)
+                warnings.warn("parse success.")
+            except pd.errors.ParserError:
+                warnings.warn("parse failed.")
+
+        if not isinstance(self._obj.index, pd.DatetimeIndex):
+            raise AttributeError(
+                "DataFrame index is not pd.DatetimeIndex, unable to export to ssn2"
+            )
+
+        # remove rows that contain no data at all and sort by time.
+        self._obj = self._obj.dropna(axis=1, how="all").sort_index()
+
+        # add a lap at the start of the session
+        # TODO: add the rest of the laps
+        timestamp = self._obj.index[0]
+        timestamp64 = timestamp2long(timestamp)
+        try:
+            lap = self._obj.loc[timestamp].Lap
+        except AttributeError:
+            lap = 1
+        newlap = Lap(int(timestamp64), int(lap), Byte(0), f"Lap {lap}", True)
+        # TODO: what to do when you add to an existing session.
+        if session.LapCollection.Count == 0:
+            logger.debug("No lap present, automatically adding lap to the start.")
+            session.LapCollection.Add(newlap)
+
+        # check if there is config for it already
+        need_new_config = False
+        for param_name in self._obj.columns:
+            param_identifier = f"{param_name}:{self.ApplicationGroupName}"
+            if not session.ContainsParameter(param_identifier):
+                need_new_config = True
+
+        if need_new_config:
+            logger.debug("Creating new config.")
+            config_identifier = f"{random.randint(0, 999999):05x}"  # .NET objects, so pylint: disable=invalid-name
+            config_decription = "SessionFrame generated config"
+            configSetManager = (  # .NET objects, so pylint: disable=invalid-name
+                ConfigurationSetManager.CreateConfigurationSetManager()
+            )
+            config = configSetManager.Create(
+                session.ConnectionString, config_identifier, config_decription
+            )
+
+            # Add param group
+            parameterGroupIdentifier = (  # .NET objects, so pylint: disable=invalid-name
+                self.ParameterGroupIdentifier
+            )
+            group1 = ParameterGroup(parameterGroupIdentifier, parameterGroupIdentifier)
+            config.AddParameterGroup(group1)
+
+            # Add app group
+            applicationGroupName = (  # .NET objects, so pylint: disable=invalid-name
+                self.ApplicationGroupName
+            )
+            parameterGroupIds = NETList[  # .NET objects, so pylint: disable=invalid-name
+                String
+            ]()
+            parameterGroupIds.Add(  # .NET objects, so pylint: disable=invalid-name
+                group1.Identifier
+            )
+            applicationGroup = (  # .NET objects, so pylint: disable=invalid-name
+                ApplicationGroup(
                     applicationGroupName, applicationGroupName, None, parameterGroupIds
                 )
             )
@@ -292,6 +503,9 @@ class SessionFrame:
         #     for i in self._obj.columns:
         #         self.__add_data_for_param(i,session,pbar)
 
+        # TODO: further split the column into chunks if the column is long
+        #  maybe keep it at 1000 sample per add_data call with a configurable chunk
+        #  size?
         with tqdm(total=self._obj.shape[1], desc="Adding data", disable=not show_progress_bar) as pbar:
             with ThreadPoolExecutor(max_workers=20) as executor:
                 input_args = [[i, session, pbar] for i in self._obj.columns]
