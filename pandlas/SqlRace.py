@@ -6,7 +6,8 @@ from abc import ABC, abstractmethod
 import clr
 import logging
 import numpy as np
-from pandlas.utils import is_port_in_use
+from pandlas.utils import is_port_in_use, timestamp2long
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -400,3 +401,33 @@ def get_samples(
     sample_count = pda.GetSamplesCount(start_time, end_time)
     ParameterValues = pda.GetSamplesBetween(start_time, end_time, sample_count)  # .NET objects, so pylint: disable=invalid-name
     return np.array(ParameterValues.Data), np.array(ParameterValues.Timestamp)
+
+
+def add_lap(
+    session: Session,
+    timestamp: pd.Timestamp,
+    lap_number: int = None,
+    lap_name: str = None,
+) -> None:
+    """Add a new lap to the session.
+
+    Args:
+        session: MESL.SqlRace.Domain.Session to the lap to.
+        timestamp: Timestamp to add the lap.
+        lap_number: Lap number.
+        lap_name: Lap name.
+
+    Returns:
+        None
+    """
+    if lap_number is None:
+        lap_number = session.LapCollection.Count + 1
+        logger.debug("No lap number provided, set lap number as %i", lap_number)
+
+    if lap_name is None:
+        lap_name = f"Lap {lap_number}"
+        logger.debug("No lap name provided, set lap name as %s", lap_name)
+
+    newlap = Lap(timestamp2long(timestamp), lap_number, Byte(0), lap_name, True)
+    session.LapCollection.Add(newlap)
+    logger.info('"%s" number %i added at %s', lap_name, lap_number, timestamp)
