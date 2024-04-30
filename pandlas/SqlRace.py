@@ -2,12 +2,13 @@
 
 import os
 from abc import ABC, abstractmethod
+import logging
 
 import clr
-import logging
+import pandas as pd
 import numpy as np
 from pandlas.utils import is_port_in_use, timestamp2long
-import pandas as pd
+
 
 logger = logging.getLogger(__name__)
 
@@ -28,18 +29,36 @@ if not os.path.isfile(SQL_RACE_DLL_PATH):
 
 clr.AddReference(SQL_RACE_DLL_PATH)
 
-from MAT.OCS.Core import SessionKey  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
-from MESL.SqlRace.Domain import (  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
+# .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
+from MAT.OCS.Core import (
+    SessionKey,
+)
+# .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
+from MESL.SqlRace.Domain import (
     Core,
     SessionManager,
     SessionState,
     RecordersConfiguration,
     Session,
     Lap,
+    Marker,
 )
-from System import DateTime, Guid, Byte  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
-from System.Collections.Generic import List  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
-from System.Net import IPEndPoint, IPAddress  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
+# .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
+from System import (
+    DateTime,
+    Guid,
+    Byte,
+    Array,
+)
+# .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
+from System.Collections.Generic import (
+    List,
+)
+# .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
+from System.Net import (
+    IPEndPoint,
+    IPAddress,
+)
 
 
 def initialise_sqlrace():
@@ -55,7 +74,8 @@ class SessionConnection(ABC):
     """Abstract class that represents a session connection"""
 
     initialise_sqlrace()
-    sessionManager = SessionManager.CreateSessionManager()  # .NET objects, so pylint: disable=invalid-name
+    # .NET objects, so pylint: disable=invalid-name
+    sessionManager = SessionManager.CreateSessionManager()
 
     @abstractmethod
     def __init__(self):
@@ -111,7 +131,8 @@ class SQLiteConnection(SessionConnection):
         self.recorder = recorder
 
         if session_key is not None:
-            self.sessionKey = SessionKey.Parse(session_key)  # .NET objects, so pylint: disable=invalid-name
+            # .NET objects, so pylint: disable=invalid-name
+            self.sessionKey = SessionKey.Parse(session_key)
         else:
             self.sessionKey = None
 
@@ -133,7 +154,8 @@ class SQLiteConnection(SessionConnection):
         logger.debug(
             "Creating new session with connection string %s.", self.connection_string
         )
-        clientSession = self.sessionManager.CreateSession(  # .NET objects, so pylint: disable=invalid-name
+        # .NET objects, so pylint: disable=invalid-name
+        clientSession = self.sessionManager.CreateSession(
             self.connection_string,
             self.sessionKey,
             self.session_identifier,
@@ -157,7 +179,8 @@ class SQLiteConnection(SessionConnection):
         logger.info("Opening server lister on port %d.", port)
         # Configure server listener
         Core.ConfigureServer(True, IPEndPoint(IPAddress.Parse("127.0.0.1"), port))
-        recorderConfiguration = RecordersConfiguration.GetRecordersConfiguration()  # .NET objects, so pylint: disable=invalid-name
+        # .NET objects, so pylint: disable=invalid-name
+        recorderConfiguration = RecordersConfiguration.GetRecordersConfiguration()
         recorderConfiguration.AddConfiguration(
             Guid.NewGuid(),
             "SQLite",
@@ -217,7 +240,10 @@ class Ssn2Session(SessionConnection):
     def load_session(self):
         """Loads the session from the SSN2 file."""
         connection_string = f"DbEngine=SQLite;Data Source= {self.db_location}"
-        stateList = List[SessionState]()  # .NET objects, so pylint: disable=invalid-name
+        # .NET objects, so pylint: disable=invalid-name
+        stateList = List[
+            SessionState
+        ]()
         stateList.Add(SessionState.Historical)
 
         # Summary
@@ -282,7 +308,8 @@ class SQLRaceDBConnection(SessionConnection):
         self.recorder = recorder
 
         if session_key is not None:
-            self.sessionKey = SessionKey.Parse(session_key)  # .NET objects, so pylint: disable=invalid-name
+            # .NET objects, so pylint: disable=invalid-name
+            self.sessionKey = SessionKey.Parse(session_key)
         else:
             self.sessionKey = None
 
@@ -307,7 +334,8 @@ class SQLRaceDBConnection(SessionConnection):
         logger.debug(
             "Creating new session with connection string %s.", self.connection_string
         )
-        clientSession = self.sessionManager.CreateSession(  # .NET objects, so pylint: disable=invalid-name
+        # .NET objects, so pylint: disable=invalid-name
+        clientSession = self.sessionManager.CreateSession(
             self.connection_string,
             self.sessionKey,
             self.session_identifier,
@@ -333,7 +361,8 @@ class SQLRaceDBConnection(SessionConnection):
         Core.ConfigureServer(True, IPEndPoint(IPAddress.Parse("127.0.0.1"), port))
 
         # Configure recorder
-        recorderConfiguration = RecordersConfiguration.GetRecordersConfiguration()  # .NET objects, so pylint: disable=invalid-name
+        # .NET objects, so pylint: disable=invalid-name
+        recorderConfiguration = RecordersConfiguration.GetRecordersConfiguration()
         recorderConfiguration.AddConfiguration(
             Guid.NewGuid(),
             "SQLServer",
@@ -401,7 +430,8 @@ def get_samples(
         end_time = session.EndTime
     pda = session.CreateParameterDataAccess(parameter)
     sample_count = pda.GetSamplesCount(start_time, end_time)
-    ParameterValues = pda.GetSamplesBetween(start_time, end_time, sample_count)  # .NET objects, so pylint: disable=invalid-name
+    # .NET objects, so pylint: disable=invalid-name
+    ParameterValues = pda.GetSamplesBetween(start_time, end_time, sample_count)
     return np.array(ParameterValues.Data), np.array(ParameterValues.Timestamp)
 
 
@@ -415,7 +445,7 @@ def add_lap(
     """Add a new lap to the session.
 
     Args:
-        session: MESL.SqlRace.Domain.Session to the lap to.
+        session: MESL.SqlRace.Domain.Session to add the lap to.
         timestamp: Timestamp to add the lap.
         lap_number: Lap number.
         lap_name: Lap name.
@@ -432,6 +462,61 @@ def add_lap(
         lap_name = f"Lap {lap_number}"
         logger.debug("No lap name provided, set lap name as %s", lap_name)
 
-    newlap = Lap(int(timestamp2long(timestamp)), lap_number, Byte(0), lap_name, count_for_fastest_lap)
+    newlap = Lap(
+        int(timestamp2long(timestamp)),
+        lap_number,
+        Byte(0),
+        lap_name,
+        count_for_fastest_lap,
+    )
     session.LapCollection.Add(newlap)
     logger.info('"%s" number %i added at %s', lap_name, lap_number, timestamp)
+
+
+def add_point_marker(
+    session: Session, marker_time: pd.Timestamp, marker_label: str
+) -> None:
+    """Adds a point marker to the session
+
+    Args:
+        session: MESL.SqlRace.Domain.Session to add the point marker to.
+        marker_time: Time of the marker
+        marker_label: Label of the marker
+
+    Returns:
+        None
+    """
+    marker_time = timestamp2long(marker_time)
+    # .NET objects, so pylint: disable=invalid-name
+    newPointMarker = Marker(int(marker_time), marker_label)
+    # .NET objects, so pylint: disable=invalid-name
+    newMarkers = Array[Marker]([newPointMarker])
+    session.Markers.Add(newMarkers)
+
+
+def add_range_marker(
+    session: Session,
+    marker_start_time: pd.Timestamp,
+    marker_end_time: pd.Timestamp,
+    marker_label: str,
+) -> None:
+    """Adds a range marker to the session.
+
+    Args:
+        session: MESL.SqlRace.Domain.Session to add the marker to.
+        marker_start_time: Start time of the range marker
+        marker_end_time: End time of the range marker
+        marker_label: Label of the marker
+
+    Returns:
+        None
+    """
+    marker_start_time = timestamp2long(marker_start_time)
+    marker_end_time = timestamp2long(marker_end_time)
+    # .NET objects, so pylint: disable=invalid-name
+    newRangeMarker = Marker(
+        int(marker_start_time), int(marker_end_time), marker_label, "MARKER", ""
+    )
+    # .NET objects, so pylint: disable=invalid-name
+    newMarkers = Array[Marker]([newRangeMarker])
+    session.Markers.Add(newMarkers)
