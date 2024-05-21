@@ -2,10 +2,13 @@ import datetime
 import random
 import time
 
+from pythonnet import load
+load("coreclr", runtime_config=r"C:\Program Files\McLaren Applied Technologies\ATLAS 10\MAT.Atlas.Host.runtimeconfig.json")
+import clr
 from pandlas.SqlRace import SQLiteConnection, initialise_sqlrace
 from pandlas import session_frame
-from pandlas.session_frame import SessionManager, SessionKey, DateTime, Lap, Byte, Marker, MarkerLabel
-from pandlas.utils import timestamp2long
+# from pandlas.session_frame import SessionManager, SessionKey, DateTime, Lap, Byte, Marker, MarkerLabel
+# from pandlas.utils import timestamp2long
 import os
 import pandas as pd
 import numpy as np
@@ -33,8 +36,10 @@ with SQLiteConnection(db_location, session_identifier, mode='w', recorder=True) 
     while True:
         response = requests.get(WTIA_ENDPOINT)
         if response.status_code == 200:
+            print("Update", datetime.datetime.now().time())
             df = pd.DataFrame([response.json()])
             df.index = pd.to_datetime(df.timestamp,unit='s')
             df.drop(columns=['visibility','name','units'],inplace=True)
             df.atlas.to_atlas_session(session, show_progress_bar=False)
-        time.sleep(0.01)
+        else: print ("Waiting", datetime.datetime.now().time())
+        time.sleep(1)
