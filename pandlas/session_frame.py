@@ -58,16 +58,30 @@ clr.AddReference(SSN2SPLITER_DLL_PATH)  # pylint: disable=no-member
 from System.Collections.Generic import (  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
     List as NETList,
 )
-from System.Collections.ObjectModel import *  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
-from System import *  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
 
-from MAT.OCS.Core import *  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
-from MAT.SqlRace.Ssn2Splitter import (  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import,unused-import
-    Ssn2SessionExporter,
+from System import (  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
+    Byte,
+    String,
+    UInt32,
+    Array,
+    Int64,
 )
-from MESL.SqlRace.Domain import *  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
-from MESL.SqlRace.Enumerators import *  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
-from MESL.SqlRace.Domain.Infrastructure.DataPipeline import *  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
+from MESL.SqlRace.Domain import (  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
+    Session,
+    Lap,
+    ConfigurationSetManager,
+    ParameterGroup,
+    ApplicationGroup,
+    RationalConversion,
+    ConfigurationSetAlreadyExistsException,
+    ConfigurationSet,
+    Parameter,
+    Channel,
+)
+from MESL.SqlRace.Enumerators import (  # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
+    DataType,
+    ChannelDataSourceType,
+)
 
 
 @pd.api.extensions.register_dataframe_accessor("atlas")
@@ -244,7 +258,7 @@ class SessionFrame:
                 warnmin = dispmin
 
                 # Add param channel
-                myParamChannelId = ( # .NET objects, so pylint: disable=invalid-name
+                myParamChannelId = (  # .NET objects, so pylint: disable=invalid-name
                     session.ReserveNextAvailableRowChannelId() % 2147483647
                 )
                 # TODO: this is a stupid workaround because it takes UInt32 but it cast
@@ -292,9 +306,11 @@ class SessionFrame:
             series = self._obj.loc[:, param_name].dropna()
             timestamps = series.index
             data = series.to_numpy()
-            myParamChannelId = self.paramchannelID[  # .NET objects, so pylint: disable=invalid-name
-                param_name
-            ]
+            myParamChannelId = (    # .NET objects, so pylint: disable=invalid-name
+                self.paramchannelID[
+                    param_name
+                ]
+            )
             self.add_data(session, myParamChannelId, data, timestamps)
 
         logging.debug(
