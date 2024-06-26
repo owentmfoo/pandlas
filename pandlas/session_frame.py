@@ -135,8 +135,8 @@ class SessionFrame:
         When creating new parameters in the config, Pandlas will utilise
         df.atlas.display_format attribute to set the parameter format override. This
         should be provided in the form of a dictionary, where the keys are the parameter
-         identifiers and the values are the units, both in string. The format override
-         must be in a valid form.
+        identifiers and the values are the units, both in string. The format override
+        must be in a valid form.
         If none have been provided, a default value of "%5.2f" will be set.
 
         Args:
