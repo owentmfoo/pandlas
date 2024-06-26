@@ -33,6 +33,7 @@ clr.AddReference(SQL_RACE_DLL_PATH)
 from MAT.OCS.Core import (
     SessionKey,
 )
+
 # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
 from MESL.SqlRace.Domain import (
     Core,
@@ -43,6 +44,7 @@ from MESL.SqlRace.Domain import (
     Lap,
     Marker,
 )
+
 # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
 from System import (
     DateTime,
@@ -50,10 +52,12 @@ from System import (
     Byte,
     Array,
 )
+
 # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
 from System.Collections.Generic import (
     List,
 )
+
 # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
 from System.Net import (
     IPEndPoint,
@@ -241,9 +245,7 @@ class Ssn2Session(SessionConnection):
         """Loads the session from the SSN2 file."""
         connection_string = f"DbEngine=SQLite;Data Source= {self.db_location}"
         # .NET objects, so pylint: disable=invalid-name
-        stateList = List[
-            SessionState
-        ]()
+        stateList = List[SessionState]()
         stateList.Add(SessionState.Historical)
 
         # Summary
@@ -447,9 +449,10 @@ def add_lap(
     Args:
         session: MESL.SqlRace.Domain.Session to add the lap to.
         timestamp: Timestamp to add the lap.
-        lap_number: Lap number.
-        lap_name: Lap name.
-        count_for_fastest_lap:
+        lap_number: Lap number. Default to be `Session.LapCollection.Count + 1`
+        lap_name: Lap name. Default to be "Lap {lap_number}".
+        count_for_fastest_lap: True if the lap should be considered as part of the
+            fastest lap calculation (e.g. a timed lap). Default to be True.
 
     Returns:
         None
@@ -470,7 +473,7 @@ def add_lap(
         count_for_fastest_lap,
     )
     session.LapCollection.Add(newlap)
-    logger.info('"%s" number %i added at %s', lap_name, lap_number, timestamp)
+    logger.info('Lap "%s" with number %i added at %s', lap_name, lap_number, timestamp)
 
 
 def add_point_marker(
@@ -503,7 +506,7 @@ def add_range_marker(
     """Adds a range marker to the session.
 
     Args:
-        session: MESL.SqlRace.Domain.Session to add the marker to.
+        session: MESL.SqlRace.Domain.Session to add the range marker to.
         marker_start_time: Start time of the range marker
         marker_end_time: End time of the range marker
         marker_label: Label of the marker
