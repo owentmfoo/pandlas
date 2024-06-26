@@ -1,18 +1,19 @@
 """
 Example to create a session with multiple data rate and merging configs
 """
-
+import datetime
 import logging
 import pandas as pd
 import numpy as np
+
 import pandlas.SqlRace as sr
-import session_frame
+import pandlas.session_frame
 
 logging.basicConfig(level=logging.INFO)
 
-SQLITE_DB_DIR = r'c:\temp\pandlas\temp.ssndb'
+SQLITE_DB_DIR = r'C:\McLaren Applied\pandlas\ExampleSessions.ssndb'
 
-start = np.datetime64("now")
+start = pd.Timestamp("now")
 
 # the minimum to add data to a session:
 #   - dataframe with a datetime index
@@ -34,7 +35,10 @@ df2.atlas.descriptions = {"Param 2:AppGroup2":"Custom Description"}
 df2.atlas.display_format = {"Param 2:AppGroup2":"%5.2f"}
 df2.atlas.units = {"Param 2:AppGroup2":"m/s"}
 
-session_identifier = "TestSession"
+session_identifier = f"TestSession - {datetime.datetime.now().strftime('%y/%m/%d %H:%M:%S')}"
 with sr.SQLiteConnection(SQLITE_DB_DIR, session_identifier, mode='w') as session:
     df.atlas.to_atlas_session(session)
     df2.atlas.to_atlas_session(session, show_progress_bar=False)
+    sr.add_lap(session, start+pd.Timedelta(500,'S'), 2, "Lap 2", True)
+    sr.add_point_marker(session, start+pd.Timedelta(100,'S'), "Example Point Marker")
+    sr.add_range_marker(session, start+pd.Timedelta(30,'S'), start+pd.Timedelta(90,'S'), "Example Range Marker")
