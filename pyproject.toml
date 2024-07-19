@@ -12,8 +12,8 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
 pythonnet = "3.0.1"
-pandas = "^1.5.3"
-tqdm = "^4.64.1"
+pandas = ">=1.5.3,<3"
+tqdm = "^4.66.4"
 
 
 [tool.poetry.group.test.dependencies]

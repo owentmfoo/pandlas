@@ -4,7 +4,6 @@ import time
 
 from pandlas.SqlRace import SQLiteConnection, initialise_sqlrace
 from pandlas import session_frame
-from pandlas.session_frame import SessionManager, SessionKey, DateTime, Lap, Byte, Marker, MarkerLabel
 from pandlas.utils import timestamp2long
 import os
 import pandas as pd
@@ -20,7 +19,7 @@ initialise_sqlrace()
 
 logging.basicConfig(level=logging.INFO)
 
-db_location = r'C:\temp\pandlas\lite.ssndb'
+db_location = r'C:\McLaren Applied\pandlas\ExampleSessions.ssndb'
 session_identifier = 'Live ISS Demo'
 
 cols = ['sin', 'cos']
