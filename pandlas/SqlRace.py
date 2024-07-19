@@ -4,6 +4,11 @@ import os
 from abc import ABC, abstractmethod
 import logging
 
+# configure pythonnet runtime for SQLRace API
+os.environ["PYTHONNET_RUNTIME"] = "coreclr"
+os.environ["PYTHONNET_CORECLR_RUNTIME_CONFIG"] = (
+    r"C:\Program Files\McLaren Applied Technologies\ATLAS 10\MAT.Atlas.Host.runtimeconfig.json"
+)
 import clr
 import pandas as pd
 import numpy as np

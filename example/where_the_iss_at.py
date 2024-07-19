@@ -2,9 +2,6 @@ import datetime
 import random
 import time
 
-from pythonnet import load
-load("coreclr", runtime_config=r"C:\Program Files\McLaren Applied Technologies\ATLAS 10\MAT.Atlas.Host.runtimeconfig.json")
-import clr
 from pandlas.SqlRace import SQLiteConnection, initialise_sqlrace
 from pandlas import session_frame
 from pandlas.utils import timestamp2long

@@ -24,9 +24,15 @@ import logging
 import numpy.typing as npt
 import numpy as np
 import pandas as pd
-import clr
 from tqdm import tqdm
 from pandlas.utils import timestamp2long
+
+# configure pythonnet runtime for SQLRace API
+os.environ["PYTHONNET_RUNTIME"] = "coreclr"
+os.environ["PYTHONNET_CORECLR_RUNTIME_CONFIG"] = (
+    r"C:\Program Files\McLaren Applied Technologies\ATLAS 10\MAT.Atlas.Host.runtimeconfig.json"
+)
+import clr
 
 logger = logging.getLogger(__name__)
 
