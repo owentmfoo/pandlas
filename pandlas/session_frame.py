@@ -281,7 +281,7 @@ class SessionFrame:
             try:
                 config.Commit()
             except ConfigurationSetAlreadyExistsException:
-                logging.warning(
+                logger.warning(
                     "Cannot commit config %s, config already exist.", config.Identifier
                 )
             session.UseLoggingConfigurationSet(config.Identifier)
@@ -313,7 +313,7 @@ class SessionFrame:
             )
             self.add_data(session, myParamChannelId, data, timestamps)
 
-        logging.debug(
+        logger.debug(
             "Data for %s:%s added.",
             self.ParameterGroupIdentifier,
             self.ApplicationGroupName,
