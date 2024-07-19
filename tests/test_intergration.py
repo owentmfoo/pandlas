@@ -4,7 +4,6 @@ import pandlas.SqlRace as sr
 import numpy as np
 import pandas as pd
 from pandlas.utils import timestamp2long
-import pandlas.session_frame
 
 
 @pytest.mark.atlaslicensed()
@@ -16,7 +15,7 @@ def test_read_write_sqlite(tmp_path):
     start = np.datetime64("now")
 
     df = pd.DataFrame()
-    df.index = pd.date_range(start, periods=1000, freq='S')
+    df.index = pd.date_range(start, periods=1000, freq='s')
     df.loc[:, "Param 1"] = np.sin(np.linspace(0, 10 * np.pi, num=1000))
     with sr.SQLiteConnection(SQLITE_DB_DIR, session_identifier, mode='w') as session:
         df.atlas.to_atlas_session(session,show_progress_bar=False)
@@ -38,7 +37,7 @@ def test_read_write_sqldb(tmp_path):
     start = np.datetime64("now")
 
     df = pd.DataFrame()
-    df.index = pd.date_range(start, periods=1000, freq='S')
+    df.index = pd.date_range(start, periods=1000, freq='s')
     df.loc[:, "Param 1"] = np.sin(np.linspace(0, 10 * np.pi, num=1000))
     with sr.SQLRaceDBConnection(data_source, database, session_identifier, mode='w') as session:
         df.atlas.to_atlas_session(session,show_progress_bar=False)
