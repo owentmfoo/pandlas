@@ -3,16 +3,23 @@
 import os
 from abc import ABC, abstractmethod
 import logging
-
-import clr
 import pandas as pd
 import numpy as np
 from pandlas.utils import is_port_in_use, timestamp2long
 
+A10_INSTALL_PATH = r"C:\Program Files\McLaren Applied Technologies\ATLAS 10"
+# configure pythonnet runtime for SQLRace API
+os.environ["PYTHONNET_RUNTIME"] = "coreclr"
+os.environ["PYTHONNET_CORECLR_RUNTIME_CONFIG"] = (
+    rf"{A10_INSTALL_PATH}\MAT.Atlas.Host.runtimeconfig.json"
+)
+
+# only import clr after the runtime has been configured, so pylint: disable=wrong-import-order,wrong-import-position
+import clr
+
 
 logger = logging.getLogger(__name__)
 
-A10_INSTALL_PATH = r"C:\Program Files\McLaren Applied Technologies\ATLAS 10"
 SQL_RACE_DLL_PATH = rf"{A10_INSTALL_PATH}\MESL.SqlRace.Domain.dll"
 
 # Configure Pythonnet and reference the required assemblies for dotnet and SQL Race

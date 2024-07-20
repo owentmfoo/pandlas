@@ -5,11 +5,10 @@
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here.
-import pathlib
 import sys
-sys.path.insert(0, pathlib.Path(__file__).parents[2].resolve().as_posix())
-
 import os
+sys.path.insert(0, os.path.abspath(os.path.join('..', '..', 'pandlas')))
+
 # Set the PYTHONNET_RUNTIME environment variable
 os.environ['PYTHONNET_RUNTIME'] = 'coreclr'
 
