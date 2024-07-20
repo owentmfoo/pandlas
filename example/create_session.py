@@ -20,7 +20,7 @@ start = pd.Timestamp("now")
 #   - dataframe with a datetime index
 #   - a column with data in doubles
 df = pd.DataFrame()
-df.index = pd.date_range(start, periods=1000, freq="S")
+df.index = pd.date_range(start, periods=1000, freq="s")
 df.loc[:, "Param 1"] = np.sin(np.linspace(0, 10 * np.pi, num=1000))
 
 # some optional extras
@@ -28,7 +28,7 @@ df.loc[:, "Param 1"] = np.sin(np.linspace(0, 10 * np.pi, num=1000))
 #   - change the parameter group name
 #   - disable the progress bars
 df2 = pd.DataFrame()
-df2.index = pd.date_range(start, periods=100, freq="10S")
+df2.index = pd.date_range(start, periods=100, freq="10s")
 df2.loc[:, "Param 2"] = np.sin(np.linspace(0, 10 * np.pi, num=100))
 df2.atlas.ParameterGroupIdentifier = "Sub group 1"
 df2.atlas.ApplicationGroupName = "AppGroup2"
@@ -42,11 +42,11 @@ session_identifier = (
 with SQLiteConnection(SQLITE_DB_DIR, session_identifier, mode="w") as session:
     df.atlas.to_atlas_session(session)
     df2.atlas.to_atlas_session(session, show_progress_bar=False)
-    sr.add_lap(session, start + pd.Timedelta(500, "S"), 2, "Lap 2", True)
-    sr.add_point_marker(session, start + pd.Timedelta(100, "S"), "Example Point Marker")
+    sr.add_lap(session, start + pd.Timedelta(500, "s"), 2, "Lap 2", True)
+    sr.add_point_marker(session, start + pd.Timedelta(100, "s"), "Example Point Marker")
     sr.add_range_marker(
         session,
-        start + pd.Timedelta(30, "S"),
-        start + pd.Timedelta(90, "S"),
+        start + pd.Timedelta(30, "s"),
+        start + pd.Timedelta(90, "s"),
         "Example Range Marker",
     )
