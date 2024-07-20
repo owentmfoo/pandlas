@@ -11,7 +11,7 @@ from tqdm import trange
 
 logging.basicConfig(level=logging.INFO)
 
-db_location = r"C:\temp\pandlas\lite.ssndb"
+db_location = r"C:\McLaren Applied\pandlas\ExampleSessions.ssndb"
 session_identifier = "Live Session Demo"
 
 cols = ["sin", "cos"]
