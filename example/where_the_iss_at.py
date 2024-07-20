@@ -1,4 +1,5 @@
 """Example to create a live session getting data from the WTIA endpoint."""
+
 import time
 
 from pandlas import SQLiteConnection
@@ -26,7 +27,7 @@ with SQLiteConnection(
     # pandlas would use the column names and app name to write the data to the right
     # channels.
     while True:
-        response = requests.get(WTIA_ENDPOINT,timeout=1)
+        response = requests.get(WTIA_ENDPOINT, timeout=1)
         if response.status_code == 200:
             logger.info("Successful request.")
             df = pd.DataFrame([response.json()])
