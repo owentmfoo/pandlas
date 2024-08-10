@@ -9,4 +9,4 @@ from importlib.metadata import version
 __version__ = version(__package__)
 
 from pandlas.session_frame import SessionFrame
-from SqlRace import SQLiteConnection, Ssn2Session, SQLRaceDBConnection
+from pandlas.SqlRace import SQLiteConnection, Ssn2Session, SQLRaceDBConnection
