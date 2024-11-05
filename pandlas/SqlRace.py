@@ -329,7 +329,7 @@ class SQLRaceDBConnection(SessionConnection):
         if self.mode == "r":
             self.load_session(session_key)
         elif self.mode == "w":
-            self.create_sqlrace(ip_address)
+            self.create_sqlrace()
 
     @property
     def connection_string(self):
