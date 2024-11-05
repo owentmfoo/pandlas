@@ -238,6 +238,7 @@ class SQLiteConnection(SessionConnection):
     def __enter__(self):
         return self.session
 
+
 class Ssn2Session(SessionConnection):
     """Represents a session connection to a SSN2 file."""
 
@@ -292,7 +293,7 @@ class SQLRaceDBConnection(SessionConnection):
         session_key: str = None,
         mode="r",
         recorder=False,
-        ip_address="127.0.0.1"
+        ip_address: str = "127.0.0.1",
     ):
         """Initializes a connection to a SQLite ATLAS session.
 
@@ -307,6 +308,8 @@ class SQLRaceDBConnection(SessionConnection):
             recorder: Only applies in write mode, set to Ture to configure the  SQLRace
                 Server Listener and  Recorder, so it can be viewed as a live session in
                 ATLAS.
+            ip_address: Set by default to the local ip address "127.0.0.1". Modify to
+                make it accessible from other instances.
         """
         self.client = None
         self.session = None
