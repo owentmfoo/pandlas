@@ -372,7 +372,7 @@ class SQLRaceDBConnection(SessionConnection):
         logger.info("Opening server lister on port %d.", port)
         # Configure server listener
         Core.ConfigureServer(True, IPEndPoint(IPAddress.Parse(self.ip_address), port))
-
+        logger.info("Server Listener IPAddress %s.", self.ip_address)
         # Configure recorder
         # .NET objects, so pylint: disable=invalid-name
         recorderConfiguration = RecordersConfiguration.GetRecordersConfiguration()
