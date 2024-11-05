@@ -238,7 +238,6 @@ class SQLiteConnection(SessionConnection):
     def __enter__(self):
         return self.session
 
-
 class Ssn2Session(SessionConnection):
     """Represents a session connection to a SSN2 file."""
 
@@ -293,6 +292,7 @@ class SQLRaceDBConnection(SessionConnection):
         session_key: str = None,
         mode="r",
         recorder=False,
+        ip_address="127.0.0.1"
     ):
         """Initializes a connection to a SQLite ATLAS session.
 
@@ -315,6 +315,7 @@ class SQLRaceDBConnection(SessionConnection):
         self.session_identifier = session_identifier
         self.mode = mode
         self.recorder = recorder
+        self.ip_address = ip_address
 
         if session_key is not None:
             # .NET objects, so pylint: disable=invalid-name
@@ -325,7 +326,7 @@ class SQLRaceDBConnection(SessionConnection):
         if self.mode == "r":
             self.load_session(session_key)
         elif self.mode == "w":
-            self.create_sqlrace()
+            self.create_sqlrace(ip_address)
 
     @property
     def connection_string(self):
@@ -367,7 +368,7 @@ class SQLRaceDBConnection(SessionConnection):
             port += 1
         logger.info("Opening server lister on port %d.", port)
         # Configure server listener
-        Core.ConfigureServer(True, IPEndPoint(IPAddress.Parse("127.0.0.1"), port))
+        Core.ConfigureServer(True, IPEndPoint(IPAddress.Parse(self.ip_address), port))
 
         # Configure recorder
         # .NET objects, so pylint: disable=invalid-name
