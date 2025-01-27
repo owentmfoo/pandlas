@@ -39,6 +39,7 @@ clr.AddReference(SQL_RACE_DLL_PATH)
 # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
 from MAT.OCS.Core import (
     SessionKey,
+    DataStatusType,
 )
 
 # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
@@ -445,7 +446,9 @@ def get_samples(
     sample_count = pda.GetSamplesCount(start_time, end_time)
     # .NET objects, so pylint: disable=invalid-name
     ParameterValues = pda.GetSamplesBetween(start_time, end_time, sample_count)
-    return np.array(ParameterValues.Data), np.array(ParameterValues.Timestamp)
+    data = [d for (d,s) in zip(ParameterValues.Data,ParameterValues.DataStatus) if s == DataStatusType.Sample]
+    timestamps = [t for (t,s) in zip(ParameterValues.Timestamp,ParameterValues.DataStatus) if s == DataStatusType.Sample]
+    return np.array(data), np.array(timestamps)
 
 
 def add_lap(
