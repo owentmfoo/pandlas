@@ -121,6 +121,7 @@ class SQLiteConnection(SessionConnection):
         session_key: str = None,
         mode="r",
         recorder=False,
+        ip_address: str = "127.0.0.1",
     ):
         """Initializes a connection to a SQLite ATLAS session.
 
@@ -133,6 +134,8 @@ class SQLiteConnection(SessionConnection):
             recorder: Only applies in write mode, set to Ture to configure the SQLRace
                 Server Listener and  Recorder, so it can be viewed as a live session in
                 ATLAS.
+            ip_address: Set by default to the local ip address "127.0.0.1". Modify to
+                make it accessible from other instances.
         """
         self.client = None
         self.session = None
@@ -140,6 +143,8 @@ class SQLiteConnection(SessionConnection):
         self.session_identifier = session_identifier
         self.mode = mode
         self.recorder = recorder
+        self.ip_address = ip_address
+
 
         if session_key is not None:
             # .NET objects, so pylint: disable=invalid-name
@@ -189,7 +194,8 @@ class SQLiteConnection(SessionConnection):
             port += 1
         logger.info("Opening server lister on port %d.", port)
         # Configure server listener
-        Core.ConfigureServer(True, IPEndPoint(IPAddress.Parse("127.0.0.1"), port))
+        Core.ConfigureServer(True, IPEndPoint(IPAddress.Parse(self.ip_address), port))
+        logger.info("Server Listener IPAddress %s.", self.ip_address)
         # .NET objects, so pylint: disable=invalid-name
         recorderConfiguration = RecordersConfiguration.GetRecordersConfiguration()
         recorderConfiguration.AddConfiguration(
