@@ -39,6 +39,7 @@ clr.AddReference(SQL_RACE_DLL_PATH)
 # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
 from MAT.OCS.Core import (
     SessionKey,
+    DataStatusType,
 )
 
 # .NET imports, so pylint: disable=wrong-import-position,wrong-import-order,import-error,wildcard-import
@@ -144,7 +145,6 @@ class SQLiteConnection(SessionConnection):
         self.mode = mode
         self.recorder = recorder
         self.ip_address = ip_address
-
 
         if session_key is not None:
             # .NET objects, so pylint: disable=invalid-name
@@ -449,9 +449,20 @@ def get_samples(
         end_time = session.EndTime
     pda = session.CreateParameterDataAccess(parameter)
     sample_count = pda.GetSamplesCount(start_time, end_time)
+    pda.GoTo(start_time)
     # .NET objects, so pylint: disable=invalid-name
-    ParameterValues = pda.GetSamplesBetween(start_time, end_time, sample_count)
-    return np.array(ParameterValues.Data), np.array(ParameterValues.Timestamp)
+    parameterValues = pda.GetNextSamples(sample_count)
+    data = [
+        d
+        for (d, s) in zip(parameterValues.Data, parameterValues.DataStatus)
+        if s == DataStatusType.Sample
+    ]
+    timestamps = [
+        t
+        for (t, s) in zip(parameterValues.Timestamp, parameterValues.DataStatus)
+        if s == DataStatusType.Sample
+    ]
+    return np.array(data), np.array(timestamps)
 
 
 def add_lap(
