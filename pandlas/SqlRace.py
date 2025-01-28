@@ -146,7 +146,6 @@ class SQLiteConnection(SessionConnection):
         self.recorder = recorder
         self.ip_address = ip_address
 
-
         if session_key is not None:
             # .NET objects, so pylint: disable=invalid-name
             self.sessionKey = SessionKey.Parse(session_key)
@@ -450,10 +449,19 @@ def get_samples(
         end_time = session.EndTime
     pda = session.CreateParameterDataAccess(parameter)
     sample_count = pda.GetSamplesCount(start_time, end_time)
+    pda.GoTo(start_time)
     # .NET objects, so pylint: disable=invalid-name
-    ParameterValues = pda.GetSamplesBetween(start_time, end_time, sample_count)
-    data = [d for (d,s) in zip(ParameterValues.Data,ParameterValues.DataStatus) if s == DataStatusType.Sample]
-    timestamps = [t for (t,s) in zip(ParameterValues.Timestamp,ParameterValues.DataStatus) if s == DataStatusType.Sample]
+    parameterValues = pda.GetNextSamples(sample_count)
+    data = [
+        d
+        for (d, s) in zip(parameterValues.Data, parameterValues.DataStatus)
+        if s == DataStatusType.Sample
+    ]
+    timestamps = [
+        t
+        for (t, s) in zip(parameterValues.Timestamp, parameterValues.DataStatus)
+        if s == DataStatusType.Sample
+    ]
     return np.array(data), np.array(timestamps)
 
 
