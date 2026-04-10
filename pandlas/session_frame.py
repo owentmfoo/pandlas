@@ -18,7 +18,6 @@ See Also:
 import os
 import random
 import warnings
-import struct
 from typing import Union
 import logging
 import numpy.typing as npt
@@ -109,11 +108,31 @@ class SessionFrame:
             "MyApp"
         )
         self.paramchannelID = {}  # .NET objects, so pylint: disable=invalid-name
-        self.units = {}  # TODO: move to setter method and check for datatype
-        self.descriptions = {}  # TODO: move to setter method and check for datatype
-        self.display_format = (
-            {}
-        )  # TODO: move to setter method and check for datatype and format
+        self.units = {}
+        self.descriptions = {}
+        self.display_format = {}
+        self.display_limits = {}
+        self.warning_limits = {}
+        self.parameter_group_separator = None  # e.g. "/" to split "Chassis/DamperFL"
+
+    def _resolve_param_group(self, column_name: str) -> tuple[str, str]:
+        """Resolve the parameter group and clean parameter name for a column.
+
+        When ``parameter_group_separator`` is set, the column name is split on
+        the separator.  The first part becomes the parameter group identifier
+        and the second part becomes the parameter name.
+
+        When the separator is ``None`` (default), the column name is used as-is
+        and the default ``ParameterGroupIdentifier`` is returned.
+
+        Returns:
+            ``(parameter_group, parameter_name)``
+        """
+        sep = self.parameter_group_separator
+        if sep and sep in column_name:
+            parts = column_name.split(sep, 1)
+            return parts[0], parts[1]
+        return self.ParameterGroupIdentifier, column_name
 
     def to_atlas_session(self, session: Session, show_progress_bar: bool = True):
         """Add the contents of the DataFrame to the ATLAS session.
@@ -126,25 +145,19 @@ class SessionFrame:
         If there is a parameter with the same name and app group present in the session,
         it will just add to that existing channel.
 
-        When creating new parameters in the config, Pandlas will utilise df.atlas.unit
-        attribute to set the parameter unit. This should be provided in the form of a
-        dictionary, where the keys are the parameter identifiers and the values are the
-        units, both in string.
-        If none have been provided, a default value of no unit "" will be set.
+        Parameter metadata can be customised via the following attributes, all provided
+        as dictionaries keyed by parameter identifier
+        (``"{column_name}:{ApplicationGroupName}"``):
 
-        When creating new parameters in the config, Pandlas will utilise
-        df.atlas.description attribute to set the parameter description. This should be
-        provided in the form of a dictionary, where the keys are the parameter
-        identifiers and the values are the units, both in string.
-        If none have been provided, a default value of f"{parameter_name} description"
-        will be set.
-
-        When creating new parameters in the config, Pandlas will utilise
-        df.atlas.display_format attribute to set the parameter format override. This
-        should be provided in the form of a dictionary, where the keys are the parameter
-        identifiers and the values are the units, both in string. The format override
-        must be in a valid form.
-        If none have been provided, a default value of "%5.2f" will be set.
+        - ``df.atlas.units``: Unit string for each parameter (default ``""``).
+        - ``df.atlas.descriptions``: Description string (default
+          ``"{parameter_name} description"``).
+        - ``df.atlas.display_format``: Printf-style format override (default
+          ``"%5.2f"``).
+        - ``df.atlas.display_limits``: ``(min, max)`` tuple overriding the display
+          range. When not set, the actual data min/max is used.
+        - ``df.atlas.warning_limits``: ``(min, max)`` tuple overriding the warning
+          range. When not set, the display limits are used.
 
         Args:
             session: MESL.SqlRace.Domain.Session to the data to.
@@ -188,8 +201,15 @@ class SessionFrame:
 
         # check if there is config for it already
         need_new_config = False
-        for param_name in self._obj.columns:
-            param_identifier = f"{param_name}:{self.ApplicationGroupName}"
+        # Build resolved mapping: column_name -> (group, clean_param_name)
+        col_group_map = {}
+        for col in self._obj.columns:
+            grp, clean = self._resolve_param_group(col)
+            col_group_map[col] = (grp, clean)
+
+        for col in self._obj.columns:
+            _, clean = col_group_map[col]
+            param_identifier = f"{clean}:{self.ApplicationGroupName}"
             if not session.ContainsParameter(param_identifier):
                 need_new_config = True
 
@@ -204,37 +224,25 @@ class SessionFrame:
                 session.ConnectionString, config_identifier, config_decription
             )
 
-            # Add param group
-            parameterGroupIdentifier = (  # .NET objects, so pylint: disable=invalid-name
-                self.ParameterGroupIdentifier
-            )
-            group1 = ParameterGroup(parameterGroupIdentifier, parameterGroupIdentifier)
-            config.AddParameterGroup(group1)
+            # Discover unique parameter groups from columns
+            unique_groups = list(dict.fromkeys(
+                grp for grp, _ in col_group_map.values()
+            ))
 
-            # Add app group
-            applicationGroupName = (  # .NET objects, so pylint: disable=invalid-name
-                self.ApplicationGroupName
-            )
-            parameterGroupIds = NETList[  # .NET objects, so pylint: disable=invalid-name
-                String
-            ]()
-            parameterGroupIds.Add(  # .NET objects, so pylint: disable=invalid-name
-                group1.Identifier
-            )
-            applicationGroup = (  # .NET objects, so pylint: disable=invalid-name
-                ApplicationGroup(
-                    applicationGroupName, applicationGroupName, None, parameterGroupIds
-                )
+            # Add all parameter groups
+            parameterGroupIds = NETList[String]()
+            for grp_name in unique_groups:
+                pg = ParameterGroup(grp_name, grp_name)
+                config.AddParameterGroup(pg)
+                parameterGroupIds.Add(pg.Identifier)
+
+            # Add app group with all parameter groups
+            applicationGroupName = self.ApplicationGroupName
+            applicationGroup = ApplicationGroup(
+                applicationGroupName, applicationGroupName, None, parameterGroupIds
             )
             applicationGroup.SupportsRda = False
             config.AddGroup(applicationGroup)
-
-            parameterGroupIdentifier = (  # .NET objects, so pylint: disable=invalid-name
-                self.ParameterGroupIdentifier
-            )
-            applicationGroupName = (  # .NET objects, so pylint: disable=invalid-name
-                self.ApplicationGroupName
-            )
 
             # Create channel conversion function
             conversion_function_name = "Simple1To1"
@@ -245,12 +253,13 @@ class SessionFrame:
             )
 
             # obtain the data
-            for param_name in tqdm(
+            for col in tqdm(
                 self._obj.columns,
                 desc="Creating channels",
                 disable=not show_progress_bar,
             ):
-                param_identifier = f"{param_name}:{self.ApplicationGroupName}"
+                grp, clean = col_group_map[col]
+                param_identifier = f"{clean}:{self.ApplicationGroupName}"
                 # if parameter exists already, then do not create a new parameter
                 if session.ContainsParameter(param_identifier):
                     logger.debug(
@@ -258,7 +267,7 @@ class SessionFrame:
                     )
                     continue
 
-                data = self._obj.loc[:, param_name].dropna().to_numpy()
+                data = self._obj.loc[:, col].dropna().to_numpy()
                 dispmax = data.max()
                 dispmin = data.min()
                 warnmax = dispmax
@@ -270,17 +279,17 @@ class SessionFrame:
                 )
                 # TODO: this is a stupid workaround because it takes UInt32 but it cast
                 #  it to Int32 internally...
-                self._add_channel(config, myParamChannelId, param_name)
+                self._add_channel(config, myParamChannelId, col)
 
                 #  Add param
                 self._add_param(
                     config,
                     applicationGroupName,
                     conversion_function_name,
-                    parameterGroupIdentifier,
+                    grp,
                     dispmax,
                     dispmin,
-                    param_name,
+                    col,
                     warnmax,
                     warnmin,
                 )
@@ -294,29 +303,27 @@ class SessionFrame:
             session.UseLoggingConfigurationSet(config.Identifier)
 
         # Obtain the channel Id for the existing parameters
-        for param_name in self._obj.columns:
-            param_identifier = f"{param_name}:{self.ApplicationGroupName}"
+        for col in self._obj.columns:
+            _, clean = col_group_map[col]
+            param_identifier = f"{clean}:{self.ApplicationGroupName}"
             if not session.ContainsParameter(param_identifier):
                 continue
-            param_identifier = f"{param_name}:{self.ApplicationGroupName}"
             parameter = session.GetParameter(param_identifier)
             if parameter.Channels.Count != 1:
                 logger.warning(
                     "Parameter %s contains more than 1 channel.", param_identifier
                 )
-            self.paramchannelID[param_name] = parameter.Channels[0].Id
+            self.paramchannelID[col] = parameter.Channels[0].Id
 
         # write it to the session
-        for param_name in tqdm(
+        for col in tqdm(
             self._obj.columns, desc="Adding data", disable=not show_progress_bar
         ):
-            series = self._obj.loc[:, param_name].dropna()
+            series = self._obj.loc[:, col].dropna()
             timestamps = series.index
             data = series.to_numpy()
             myParamChannelId = (    # .NET objects, so pylint: disable=invalid-name
-                self.paramchannelID[
-                    param_name
-                ]
+                self.paramchannelID[col]
             )
             self.add_data(session, myParamChannelId, data, timestamps)
 
@@ -334,7 +341,7 @@ class SessionFrame:
         ParameterGroupIdentifier: str,  # .NET objects, so pylint: disable=invalid-name
         display_max: float,
         display_min: float,
-        parameter_name: str,
+        column_name: str,
         warning_max: float,
         warning_min: float,
     ):
@@ -347,31 +354,57 @@ class SessionFrame:
             ParameterGroupIdentifier: ID of the ParameterGroup.
             display_max: Display maximum.
             display_min: Display minimum.
-            parameter_name: Parameter name.
+            column_name: Original DataFrame column name (used to look up channel ID).
             warning_max: Warning maximum.
             warning_min: Warning minimum.
 
         """
+        _, clean_name = self._resolve_param_group(column_name)
         # TODO: guard again NaNs
         myParamChannelId = NETList[  # .NET objects, so pylint: disable=invalid-name
             UInt32
         ]()
-        myParamChannelId.Add(self.paramchannelID[parameter_name])
-        parameterIdentifier = f"{parameter_name}:{ApplicationGroupName}"  # .NET objects, so pylint: disable=invalid-name
+        myParamChannelId.Add(self.paramchannelID[column_name])
+        parameterIdentifier = f"{clean_name}:{ApplicationGroupName}"  # .NET objects, so pylint: disable=invalid-name
         parameterGroupIdentifiers = NETList[  # .NET objects, so pylint: disable=invalid-name
             String
         ]()
         parameterGroupIdentifiers.Add(ParameterGroupIdentifier)
 
+        # Metadata lookup: try both clean identifier and full column-based identifier
+        full_identifier = f"{column_name}:{ApplicationGroupName}"
         param_description = self.descriptions.get(
-            parameterIdentifier, f"{parameter_name} description"
+            parameterIdentifier,
+            self.descriptions.get(
+                full_identifier, f"{clean_name} description"
+            ),
         )
-        param_format = self.display_format.get(parameterIdentifier, "%5.2f")
-        param_unit = self.units.get(parameterIdentifier, "")
+        param_format = self.display_format.get(
+            parameterIdentifier,
+            self.display_format.get(full_identifier, "%5.2f"),
+        )
+        param_unit = self.units.get(
+            parameterIdentifier,
+            self.units.get(full_identifier, ""),
+        )
+
+        param_display_limits = self.display_limits.get(
+            parameterIdentifier,
+            self.display_limits.get(full_identifier, None),
+        )
+        if param_display_limits is not None:
+            display_min, display_max = param_display_limits
+
+        param_warning_limits = self.warning_limits.get(
+            parameterIdentifier,
+            self.warning_limits.get(full_identifier, None),
+        )
+        if param_warning_limits is not None:
+            warning_min, warning_max = param_warning_limits
 
         myParameter = Parameter(  # .NET objects, so pylint: disable=invalid-name
             parameterIdentifier,
-            parameter_name,
+            clean_name,
             param_description,
             float(display_max),
             float(display_min),
@@ -412,7 +445,7 @@ class SessionFrame:
     def add_data(
         self,
         session: Session,
-        channel_id: float,
+        channel_id: int,
         data: np.ndarray,
         timestamps: Union[pd.DatetimeIndex, npt.NDArray[np.datetime64]],
     ):
@@ -435,14 +468,8 @@ class SessionFrame:
         channelIds = NETList[UInt32]()  # .NET objects, so pylint: disable=invalid-name
         channelIds.Add(channel_id)
 
-        # databytes = data.astype(np.float32).tobytes()
-        databytes = bytearray(len(data) * 4)
-        for i, value in enumerate(data):
-            new_bytes = struct.pack("f", value)
-            databytes[i * 4 : i * 4 + len(new_bytes)] = new_bytes
+        databytes = bytes(data.astype(np.float32).tobytes())
 
-        timestamps_array = Array[Int64](len(timestamps))
-        for i, timestamp in enumerate(timestamps):
-            timestamps_array[i] = Int64(int(timestamp))
+        timestamps_array = Array[Int64](timestamps.astype(np.int64).tolist())
 
         session.AddRowData(channel_id, timestamps_array, databytes, 4, False)

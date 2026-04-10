@@ -1,12 +1,16 @@
 [tool.poetry]
 name = "Pandlas"
-version = "0.2.2a4"
-description = "An example package demonstrating how to use the SQLRace API. This package is not maintained nor officially supported."
-authors = ["Owen Foo <owen.foo@mclarenapplied.com>"]
+version = "0.3.0"
+description = "A Pandas extension for reading and writing ATLAS 10 sessions via the SQLRace API."
+authors = [
+    "Owen Foo <owen.foo@mclarenapplied.com>",
+    "Carles Abella <carles.abella@motionapplied.com>",
+]
 readme = "README.md"
+repository = "https://github.com/Software-Products/pandlas"
 classifiers = [
     "Private :: Do Not Upload",
-    "Development Status :: 7 - Inactive",
+    "Development Status :: 4 - Beta",
 ]
 
 [tool.poetry.dependencies]

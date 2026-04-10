@@ -24,8 +24,8 @@ def test_read_write_sqlite(tmp_path):
     with sr.SQLiteConnection(SQLITE_DB_DIR, session_key=key, mode='r') as session:
         assert session_identifier == session.Identifier
         samples, timstamp = sr.get_samples(session, "Param 1:MyApp")
-        np.isclose(df["Param 1"].to_numpy(),samples)
-        np.isclose(timestamp2long(df["Param 1"].index),timstamp)
+        assert np.all(np.isclose(df["Param 1"].to_numpy(), samples))
+        assert np.all(np.isclose(timestamp2long(df["Param 1"].index), timstamp))
 
 
 @pytest.mark.atlaslicensed()
@@ -46,5 +46,5 @@ def test_read_write_sqldb(tmp_path):
     with sr.SQLRaceDBConnection(data_source, database, session_key=key, mode='r') as session:
         assert session_identifier == session.Identifier
         samples, timstamp = sr.get_samples(session, "Param 1:MyApp")
-        np.isclose(df["Param 1"].to_numpy(),samples)
-        np.isclose(timestamp2long(df["Param 1"].index),timstamp)
+        assert np.all(np.isclose(df["Param 1"].to_numpy(), samples))
+        assert np.all(np.isclose(timestamp2long(df["Param 1"].index), timstamp))

@@ -19,8 +19,8 @@ os.environ['PYTHONNET_CORECLR_RUNTIME_CONFIG'] = r'C:\Program Files\McLaren Appl
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Pandlas'
-copyright = '2024, Owen Foo'
-author = 'Owen Foo'
+copyright = '2026, Owen Foo'
+author = 'Owen Foo; Carles Abella'
 from importlib.metadata import version as package_version
 release = package_version("pandlas")
 

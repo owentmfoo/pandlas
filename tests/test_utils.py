@@ -40,7 +40,7 @@ class Test_timestamp2long:
         start_date = pd.Timestamp("2021-01-01")
         long = timestamp2long(ts, start_date)
         ts2 = long2timestamp(long.to_numpy(), start_date)
-        np.equal(ts, ts2)
+        assert np.all(np.equal(ts, ts2))
 
 
 class Test_long2timestamp:
@@ -59,7 +59,7 @@ class Test_long2timestamp:
         start_date = pd.Timestamp("2021-01-01")
         ts = long2timestamp(long, start_date)
         long2 = timestamp2long(ts, start_date)
-        np.equal(long, long2)
+        assert np.all(np.equal(long, long2))
 
     @pytest.mark.parametrize(
         "epoch", [random.randint(0, 2234860605000) for _ in range(5)]
